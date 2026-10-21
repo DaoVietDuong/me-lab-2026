@@ -20,6 +20,6 @@ kubeconfig*
 
 # Experiment run output (captures, probe logs); results go in each card
 experiments/**/out/
-experiments/**/out-*.txt
+experiments/**/out-*
 experiments/**/exp.txt
 experiments/**/probe.txt
