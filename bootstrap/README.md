@@ -14,6 +14,7 @@ One-time scripts that build the lab's 5 VMs on Hyper-V. VM settings live in `lab
 
 | 5 | `bash 30-hub-firewall.sh` | Git Bash | Default-deny hub firewall + egress allowlist (`hub/`); rolls back by itself in 60 s if it locks out SSH |
 | 6 | `bash 40-k3s.sh` | Git Bash | 3-server k3s + Cilium + LB pool + `lab-gateway` on 10.10.0.200 + whoami smoke test; kubeconfig → `~/.kube/lab.yaml` |
+| 7 | `bash 50-argocd.sh` | Git Bash | Argo CD + root app; from here on everything under `platform/` is deployed by pushing to GitHub |
 
 After step 4, from Windows: `ssh lab@10.0.0.2` (hub), `ssh lab@10.10.0.11` (lab-node1, via the hub), `ssh lab@10.20.0.10` (tester).
 

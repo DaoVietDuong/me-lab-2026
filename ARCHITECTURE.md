@@ -9,7 +9,8 @@
 | 0. Old VMs retired (3 × Ubuntu 22.04 k8s VMs on C:) | ✅ Done — deleted, 35 GB freed on C: |
 | 1. Network: switches, hub, tester, 3 lab VMs, hub firewall | ✅ Done — tested, `clean-base` checkpoints taken |
 | 2. Cluster: k3s HA + Cilium (CNI, LB IPs, Gateway API) | ✅ Done — tester reaches `https://10.10.0.200` through the hub, nothing else |
-| 3. Delivery: GitHub repo, Argo CD, observability → Module 0 | ⏭ **Next** |
+| 3a. GitHub repo, Argo CD (app of apps), cert-manager + lab CA, `*.apps.lab` DNS | ✅ Done — all 5 Argo CD apps Synced/Healthy |
+| 3b. Push-to-deploy (Actions → GHCR → Argo CD), observability → Module 0 | ⏭ **Next** |
 | 4–9. RabbitMQ + Postgres, Kafka, Cassandra, Redis, Modules 6–8 | Not started |
 
 ## Topology
@@ -99,7 +100,7 @@ Everything else is dropped and logged: `journalctl -k -g fw-drop` on the hub.
 | CNI | Cilium **1.20.3** (k3s HelmChart), VXLAN tunnel, BPF masquerade | Pod CIDRs 10.42.0–2.0/24 per node, services 10.43.0.0/16 |
 | Service routing | Cilium kube-proxy replacement (eBPF) | No kube-proxy DaemonSet |
 | LoadBalancer IPs | Cilium LB IPAM pool `spoke-lab` 10.10.0.200–220 + L2 announcements on eth0 | One node answers ARP per VIP, chosen by a Kubernetes lease (`cilium-l2announce-*`); now lab-node1 |
-| Ingress | Gateway API **v1.6.3** CRDs, `gateway/lab-gateway` (class `cilium`) HTTPS :443 on 10.10.0.200 | TLS is a **temporary self-signed** cert (`lab-gateway-tls`) until cert-manager |
+| Ingress | Gateway API **v1.6.3** CRDs, `gateway/lab-gateway` (class `cilium`) HTTPS :443 on 10.10.0.200 | Cert `*.apps.lab` + IP 10.10.0.200 from the lab CA (cert-manager, renews automatically) |
 | Smoke test | `hello/whoami` × 2 behind HTTPRoute `/` | Shows which pod answered and the client IP (`X-Forwarded-For: 10.20.0.10`) |
 | Observability | Hubble relay + UI installed (not exposed yet) | |
 | Other | Secrets encryption at rest on; etcd metrics exposed; metrics-server and local-path (k3s defaults) | |
@@ -112,6 +113,30 @@ Manifests: [platform/cluster-bootstrap/](platform/cluster-bootstrap/). They are 
 
 **Verified:** tester → `https://10.10.0.200` works (requests split across both whoami pods). Tester → :80 on the VIP, the API on 6443 and the nodes' 443 are all blocked by the hub. Windows → the VIP and the API work. All 3 Cilium agents report 3/3 nodes healthy.
 
+## GitOps and certificates
+
+Repo: **https://github.com/DaoVietDuong/me-lab-2026** (public). Argo CD pulls over HTTPS and needs no credentials and no inbound port.
+
+```
+platform/apps/root.yaml   (applied once by bootstrap/50-argocd.sh)
+  └─ root ── syncs platform/apps/ ──┬─ argocd               platform/argocd        (Argo CD manages itself; prune off)
+                                    ├─ cert-manager         Helm chart jetstack v1.21.2 (sync wave -1)
+                                    ├─ cert-manager-config  platform/cert-manager  (lab CA + gateway cert)
+                                    ├─ cluster-bootstrap    platform/cluster-bootstrap (LB pool, gateway, routes, whoami)
+                                    └─ root                 (itself)
+```
+
+| Component | As built | Notes |
+| --- | --- | --- |
+| Argo CD | **v3.5.6**, upstream manifests + kustomize patches | Redis image from Docker Hub instead of public.ecr.aws (not in the egress allowlist); Dex and notifications removed; TLS ends at the gateway (`server.insecure`); server-side diff on |
+| cert-manager | **v1.21.2** | CRDs kept if the app is deleted |
+| Lab root CA | `cert-manager/lab-root-ca`, ECDSA P-256, valid to 2036 | Created in-cluster: the key is never in Git. **Name constraints (critical): only `*.lab` and 10.10.0.0/24** |
+| Issuer | ClusterIssuer `lab-ca` | Use it for every lab certificate |
+
+**Not managed by Argo CD:** Cilium. It stays with k3s's helm-controller, because the CNI must be running before Argo CD can start. Its source is still in Git (`platform/cluster-bootstrap/cilium.yaml`), excluded from the `cluster-bootstrap` app.
+
+**Change the platform** by committing to `main`. Argo CD polls every 3 minutes, and self-heal reverts manual `kubectl` edits to managed objects.
+
 ## Access
 
 ```bash
@@ -121,6 +146,17 @@ ssh lab@10.20.0.10    # tester
 kubectl --kubeconfig ~/.kube/lab.yaml get nodes      # from Windows
 curl -k https://10.10.0.200/                         # the gateway, from Windows or the tester
 ```
+
+| URL (Windows or tester) | What |
+| --- | --- |
+| https://argocd.apps.lab | Argo CD UI. User `admin`; password: `kubectl --kubeconfig ~/.kube/lab.yaml -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
+| https://hubble.apps.lab | Hubble UI: live flow map |
+| https://whoami.apps.lab (or any other name) | Smoke test (catch-all route) |
+
+**Name resolution:** the hub's dnsmasq answers `*.apps.lab` → 10.10.0.200 and `<vm>.lab` → the VM's IP. Windows sends only `.lab` queries to the hub (NRPT rule from `10-host.ps1`); all other DNS is unchanged.
+
+**Trust the lab CA** (optional, removes browser warnings): the CA cert is at `~/.kube/lab-root-ca.crt`. Import it for your user only:
+`Import-Certificate -FilePath $HOME\.kube\lab-root-ca.crt -CertStoreLocation Cert:\CurrentUser\Root`. Because of the name constraints, it can't vouch for any site outside `.lab`. Windows curl (Schannel) also needs `--ssl-no-revoke`, since the lab CA publishes no revocation list.
 Key: `~/.ssh/id_ed25519` on Windows. Password SSH is refused everywhere. Windows kubectl is v1.34, two minor versions behind the cluster (v1.36). Most commands work, but upgrade it when convenient (`winget upgrade Kubernetes.kubectl`).
 
 ## How it is built (reproducible)
@@ -135,6 +171,7 @@ Scripts in [bootstrap/](bootstrap/) (run order in [bootstrap/README.md](bootstra
 | `20-vms.ps1 -Start` | 5 VMs from the golden disk; each gets a cloud-init seed ISO (hostname, user, key, network, hub roles) |
 | `30-hub-firewall.sh` | Installs the default-deny firewall; auto-rollback in 60 s if SSH is lost |
 | `40-k3s.sh` | k3s on node1 → Gateway API CRDs → Cilium → join node2/3 → LB pool → gateway + whoami → Windows kubeconfig |
+| `50-argocd.sh` | Argo CD from `platform/argocd`, then the root app; waits until every app is Synced/Healthy |
 
 ## Deviations from the plan
 
@@ -157,4 +194,6 @@ Scripts in [bootstrap/](bootstrap/) (run order in [bootstrap/README.md](bootstra
 
 ## Next step
 
-Build step 3 (completes Module 0): a public GitHub monorepo with the plan's layout, Argo CD in the cluster pulling from it, and a hello-world service deployed by `git push` through GitHub Actions → GHCR. Then the observability stack (kube-prometheus-stack, Loki, Tempo) and Grafana behind `lab-gateway`. Before that, cert-manager with an internal CA replaces the self-signed gateway cert.
+Build step 3b (completes Module 0):
+1. **Push-to-deploy:** a hello-world service in `services/`, a GitHub Actions workflow (path filter → build → Trivy → push `ghcr.io/daovietduong/<service>:<sha>` → bump the tag in `deploy/`), and an Argo CD app for `deploy/`. Done when `git push` reaches the cluster in under 5 minutes with no manual step.
+2. **Observability:** kube-prometheus-stack, Loki + Alloy, Tempo; Grafana at `https://grafana.apps.lab`.
