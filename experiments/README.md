@@ -40,6 +40,7 @@ Short, reusable.
 | --- | --- | --- |
 | [m1-01-trace-request](m1-01-trace-request/) | 1 Networking | One HTTPS request from the tester traced at every hop: hub, ARP, Cilium, Envoy, VXLAN, pod |
 | [m1-02-asymmetric-routing](m1-02-asymmetric-routing/) | 1 Networking | Replies bypass the hub: conntrack `SYN_SENT [UNREPLIED]`, connection hangs after the handshake; invalid drops now logged |
+| [m1-03-firewall-debugging](m1-03-firewall-debugging/) | 1 Networking | A bad rule found from Loki alone (33 drops = 33 failures); found 1-min-late systemd timers and Grafana phoning home |
 
 ## Tools
 

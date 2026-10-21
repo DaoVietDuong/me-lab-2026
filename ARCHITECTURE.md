@@ -13,7 +13,7 @@
 | 3b. Push-to-deploy (Actions → GHCR → Argo CD) | ✅ Done — `git push` → new version serving in **186 s** (target < 5 min) |
 | 3c. Observability: Prometheus, Grafana, Loki, Tempo, Alloy | ✅ Done — metrics, logs, hub firewall drops and traces verified end to end |
 | **Module 0 — Foundation** | ✅ **Complete** (2026-10-21) |
-| Module 1 — Networking experiments | 🔄 **In progress**: Chaos Mesh 2.8.5 installed and verified (100 ms injected → median 30 → 132 ms); [M1-01 trace a request](experiments/m1-01-trace-request/), [M1-02 asymmetric routing](experiments/m1-02-asymmetric-routing/) done |
+| Module 1 — Networking experiments | 🔄 **In progress**: Chaos Mesh 2.8.5 installed and verified (100 ms injected → median 30 → 132 ms); [M1-01 trace a request](experiments/m1-01-trace-request/), [M1-02 asymmetric routing](experiments/m1-02-asymmetric-routing/), [M1-03 firewall debugging](experiments/m1-03-firewall-debugging/) done |
 | 4–9. RabbitMQ + Postgres, Kafka, Cassandra, Redis, Modules 6–8 | Not started |
 
 ## Topology

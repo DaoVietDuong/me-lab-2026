@@ -17,3 +17,9 @@ kubeconfig*
 *.key
 *.pem
 !**/public*.pem
+
+# Experiment run output (captures, probe logs); results go in each card
+experiments/**/out/
+experiments/**/out-*.txt
+experiments/**/exp.txt
+experiments/**/probe.txt
