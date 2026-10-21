@@ -41,6 +41,7 @@ Short, reusable.
 | [m1-01-trace-request](m1-01-trace-request/) | 1 Networking | One HTTPS request from the tester traced at every hop: hub, ARP, Cilium, Envoy, VXLAN, pod |
 | [m1-02-asymmetric-routing](m1-02-asymmetric-routing/) | 1 Networking | Replies bypass the hub: conntrack `SYN_SENT [UNREPLIED]`, connection hangs after the handshake; invalid drops now logged |
 | [m1-03-firewall-debugging](m1-03-firewall-debugging/) | 1 Networking | A bad rule found from Loki alone (33 drops = 33 failures); found 1-min-late systemd timers and Grafana phoning home |
+| [m1-04-wan-latency-loss](m1-04-wan-latency-loss/) | 1 Networking | netem RTT +50 ms / 1–5% loss: fresh request = 4 RTT (DNS!), loss moves p99 in 1 s steps; DNS TTL 0 fixed, IPv6 negative caching open |
 
 ## Tools
 

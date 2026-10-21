@@ -13,7 +13,7 @@
 | 3b. Push-to-deploy (Actions → GHCR → Argo CD) | ✅ Done — `git push` → new version serving in **186 s** (target < 5 min) |
 | 3c. Observability: Prometheus, Grafana, Loki, Tempo, Alloy | ✅ Done — metrics, logs, hub firewall drops and traces verified end to end |
 | **Module 0 — Foundation** | ✅ **Complete** (2026-10-21) |
-| Module 1 — Networking experiments | 🔄 **In progress**: Chaos Mesh 2.8.5 installed and verified (100 ms injected → median 30 → 132 ms); [M1-01 trace a request](experiments/m1-01-trace-request/), [M1-02 asymmetric routing](experiments/m1-02-asymmetric-routing/), [M1-03 firewall debugging](experiments/m1-03-firewall-debugging/) done |
+| Module 1 — Networking experiments | 🔄 **In progress**: Chaos Mesh 2.8.5 installed and verified (100 ms injected → median 30 → 132 ms); [M1-01 trace a request](experiments/m1-01-trace-request/), [M1-02 asymmetric routing](experiments/m1-02-asymmetric-routing/), [M1-03 firewall debugging](experiments/m1-03-firewall-debugging/), [M1-04 WAN latency/loss](experiments/m1-04-wan-latency-loss/) done |
 | 4–9. RabbitMQ + Postgres, Kafka, Cassandra, Redis, Modules 6–8 | Not started |
 
 ## Topology
@@ -71,7 +71,7 @@ Static MACs `00:15:5d:0a:xx:xx` are set per NIC so cloud-init can name the inter
 | Service | Listens on | Purpose |
 | --- | --- | --- |
 | sshd | eth1 (lab-mgmt) only | Administration from Windows |
-| dnsmasq | eth1, eth2, eth3 :53 | `*.lab` names for all VMs; forwards everything else upstream; fills the egress allowlist |
+| dnsmasq | eth1, eth2, eth3 :53 | `*.lab` names for all VMs (TTL 60); forwards everything else upstream (cached ≥ 60 s; Hyper-V's DNS proxy sends TTL 0); fills the egress allowlist. Known gap: AAAA answers carry no SOA, so clients can't cache them (M1-04) |
 | chrony | eth2, eth3 :123 | Spokes sync time from the hub, and the hub syncs from public NTP. This is where the clock-skew experiments will hook in |
 | nftables | — | Default-deny filter + NAT to eth0 |
 
