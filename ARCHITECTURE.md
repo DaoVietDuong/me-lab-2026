@@ -13,7 +13,7 @@
 | 3b. Push-to-deploy (Actions → GHCR → Argo CD) | ✅ Done — `git push` → new version serving in **186 s** (target < 5 min) |
 | 3c. Observability: Prometheus, Grafana, Loki, Tempo, Alloy | ✅ Done — metrics, logs, hub firewall drops and traces verified end to end |
 | **Module 0 — Foundation** | ✅ **Complete** (2026-10-21) |
-| Module 1 — Networking experiments | 🔄 **In progress**: Chaos Mesh 2.8.5 installed and verified (100 ms injected → median 30 → 132 ms); [M1-01 trace a request](experiments/m1-01-trace-request/) done |
+| Module 1 — Networking experiments | 🔄 **In progress**: Chaos Mesh 2.8.5 installed and verified (100 ms injected → median 30 → 132 ms); [M1-01 trace a request](experiments/m1-01-trace-request/), [M1-02 asymmetric routing](experiments/m1-02-asymmetric-routing/) done |
 | 4–9. RabbitMQ + Postgres, Kafka, Cassandra, Redis, Modules 6–8 | Not started |
 
 ## Topology
@@ -89,7 +89,7 @@ Static MACs `00:15:5d:0a:xx:xx` are set per NIC so cloud-init can name the inter
 | tester → internet | TCP 80, 443 | ✅ |
 | Spokes → hub | DNS 53, NTP 123, ICMP | ✅ |
 
-Everything else is dropped and logged: `journalctl -k -g fw-drop` on the hub.
+Everything else is dropped and logged: `journalctl -k -g fw-drop` on the hub. Invalid-state packets (e.g. asymmetric routing, M1-02) are logged too, as `fw-drop invalid:`.
 
 **Domain egress:** the firewall's `egress_https4` / `egress_http4` sets are filled by dnsmasq (`nftset=`) whenever a lab node resolves a listed domain or its subdomains: GitHub, GHCR, Docker Hub, Quay, registry.k8s.io, pkg.dev, k3s.io, jetstack, cilium, chaos-mesh, k8ssandra, strimzi, ubuntu.com. List: [bootstrap/hub/egress.conf](bootstrap/hub/egress.conf).
 
