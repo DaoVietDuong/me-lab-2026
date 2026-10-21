@@ -9,4 +9,4 @@ resources:
   - servicemonitor.yaml
 images:
   - name: ghcr.io/daovietduong/hello
-    newTag: "3da954aea674"
+    newTag: "d5d868f3b711"
