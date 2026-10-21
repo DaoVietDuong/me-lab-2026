@@ -8,4 +8,4 @@ resources:
   - httproute.yaml
 images:
   - name: ghcr.io/daovietduong/hello
-    newTag: "1a496a3e91cd"
+    newTag: "3da954aea674"
