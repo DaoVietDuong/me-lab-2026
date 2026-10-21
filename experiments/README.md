@@ -45,6 +45,7 @@ Short, reusable.
 | [m1-05-cluster-latency-retries](m1-05-cluster-latency-retries/) | 1 Networking | 100 ms + 5% loss on a depth-3 chain: naive retries → 2.5× leaf load, 8/30 ok; deadline budget → 0.9×, 35/40 ok; ndots DNS cost 0.5–3 s |
 | [m4-01-pg-failover](m4-01-pg-failover/) | 4 Databases | Primary deleted / SIGKILLed / powered off: out of the box 3 min or never; after operator HA, client keepalives and a 15 s smart shutdown: 3 s / 23 s / 69 s, 0 lost writes |
 | [m4-02-pg-sync-vs-async](m4-02-pg-sync-vs-async/) | 4 Databases | Sync costs 44% (healthy) to 99.6% (300 ms lag) of write throughput; under lag a kernel crash lost 90 acked writes with async, 0 with sync; SIGKILL loses none; CoreDNS (1 replica) SPOF stretched a sync failover to 151 s |
+| [m4-03-read-your-writes](m4-03-read-your-writes/) | 4 Databases | Immediate replica reads are stale 96–98 % even idle (lag 1.2 ms); 100 % under 300 ms lag. Fixes: read primary / LSN wait (read waits) / remote_apply (write waits); ANY 1 not enough with one slow replica (62.5 % stale). A long replica read stalls replay to 28 s, then is cancelled |
 
 ## Tools
 

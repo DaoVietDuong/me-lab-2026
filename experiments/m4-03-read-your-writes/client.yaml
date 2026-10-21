@@ -1,0 +1,21 @@
+# Idle client pod for M4-03: run.sh execs psql / pgbench in it. Connection string from the
+# CloudNativePG-generated secret pg-lab-app (never printed).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ryw-client
+  namespace: db
+  labels: {app: ryw-client}
+spec:
+  restartPolicy: Never
+  containers:
+    - name: client
+      image: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie
+      env:
+        - name: PGURI
+          valueFrom: {secretKeyRef: {name: pg-lab-app, key: uri}}
+        - {name: PGCONNECT_TIMEOUT, value: "3"}
+      command: [sleep, infinity]
+      resources:
+        requests: {cpu: 50m, memory: 32Mi}
+        limits: {memory: 256Mi}
