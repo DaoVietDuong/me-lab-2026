@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # M4-01/02: PostgreSQL primary failure under a steady write load; failover time and lost acknowledged writes.
-#   ./run.sh experiment <delete|kill|poweroff>   reset, write 15 s, inject the fault, watch, analyse
+#   ./run.sh experiment <delete|kill|poweroff|crash>   reset, write 15 s, inject the fault, watch, analyse
 #   ./run.sh reset          new writer pod, empty table
 #   ./run.sh analyze        failover gap and lost/ambiguous writes from the writer log vs. the table
 #   ./run.sh restore        start any lab VM that is off, wait for the cluster to be whole again
@@ -8,6 +8,8 @@
 # Faults: delete   = kubectl delete pod (graceful: PostgreSQL gets a clean shutdown)
 #         kill     = Chaos Mesh pod-kill, grace 0 (SIGKILL, like the process crashing)
 #         poweroff = Hyper-V Stop-VM -TurnOff on the primary's node (pulling the power cord)
+#         crash    = kernel panic on the primary's node (sysrq "c"), auto-reboot after 120 s: like a power loss,
+#                    no Hyper-V rights needed
 set -euo pipefail
 cd "$(dirname "$0")"
 SELF="$PWD/$(basename "$0")"
@@ -43,7 +45,7 @@ analyze)
     grep -E '^# (error|connect attempt=[2-9])' out-writer.log | head -4 | sed 's/^/  /'
     ;;
 restore)
-    powershell -NoProfile -Command "Get-VM lab-node* | Where-Object State -eq 'Off' | ForEach-Object { Start-VM \$_; 'started ' + \$_.Name }"
+    powershell -NoProfile -Command "Get-VM lab-node* | Where-Object State -eq 'Off' | ForEach-Object { Start-VM \$_; 'started ' + \$_.Name }" 2>/dev/null || echo "  (no Hyper-V rights: not starting VMs; crashed nodes reboot by themselves)"
     API=10.10.0.11
     for i in $(seq 1 60); do [ "$(kc get nodes --no-headers 2>/dev/null | grep -c ' Ready')" = 3 ] && break; sleep 5; done
     kc get nodes --no-headers | awk '{print "  " $1, $2}'
@@ -51,7 +53,7 @@ restore)
     echo "pg-lab: $(kc -n db get cluster pg-lab -o jsonpath='{.status.readyInstances}/3 ready, primary {.status.currentPrimary}, {.status.phase}')"
     ;;
 experiment)
-    fault=${2:?delete|kill|poweroff}
+    fault=${2:?delete|kill|poweroff|crash}
     bash "$SELF" reset
     sleep 15
     old=$(primary); node=$(node_of "$old"); API=$(api_for "$node")
@@ -60,6 +62,7 @@ experiment)
         delete)   kc -n db delete pod "$old" --wait=false >/dev/null ;;
         kill)     sed "s/__POD__/$old/" pod-kill.yaml | kc apply -f - >/dev/null ;;
         poweroff) powershell -NoProfile -Command "Stop-VM -Name $node -TurnOff -Force" ;;
+        crash)    ssh -o BatchMode=yes lab@"${NODE_IP[$node]}" "sudo sysctl -qw kernel.panic=120; echo c | sudo tee /proc/sysrq-trigger" >/dev/null 2>&1 || true ;;
     esac
     # Watch the operator's view of the primary, once a second
     for i in $(seq 1 120); do
@@ -80,5 +83,5 @@ cleanup)
     echo "writer removed, test table dropped"
     ;;
 *)
-    echo "usage: $0 experiment <delete|kill|poweroff> | reset | analyze | restore | cleanup" >&2; exit 2 ;;
+    echo "usage: $0 experiment <delete|kill|poweroff|crash> | reset | analyze | restore | cleanup" >&2; exit 2 ;;
 esac

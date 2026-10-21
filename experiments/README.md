@@ -44,6 +44,7 @@ Short, reusable.
 | [m1-04-wan-latency-loss](m1-04-wan-latency-loss/) | 1 Networking | netem RTT +50 ms / 1–5% loss: fresh request = 4 RTT (DNS!), loss moves p99 in 1 s steps; DNS TTL 0 fixed, IPv6 negative caching open |
 | [m1-05-cluster-latency-retries](m1-05-cluster-latency-retries/) | 1 Networking | 100 ms + 5% loss on a depth-3 chain: naive retries → 2.5× leaf load, 8/30 ok; deadline budget → 0.9×, 35/40 ok; ndots DNS cost 0.5–3 s |
 | [m4-01-pg-failover](m4-01-pg-failover/) | 4 Databases | Primary deleted / SIGKILLed / powered off: out of the box 3 min or never; after operator HA, client keepalives and a 15 s smart shutdown: 3 s / 23 s / 69 s, 0 lost writes |
+| [m4-02-pg-sync-vs-async](m4-02-pg-sync-vs-async/) | 4 Databases | Sync costs 44% (healthy) to 99.6% (300 ms lag) of write throughput; under lag a kernel crash lost 90 acked writes with async, 0 with sync; SIGKILL loses none; CoreDNS (1 replica) SPOF stretched a sync failover to 151 s |
 
 ## Tools
 
