@@ -215,7 +215,7 @@ Nine modules (0–8), in order: each one adds the component the next module brea
 - [x] 3 lab nodes + tester on their spokes; each can reach only what the policy allows
 - [x] k3s HA cluster with Cilium; `kubectl get nodes` shows 3 Ready
 - [x] Argo CD installed; one hello-world service deployed by `git push` (push → serving in 186 s, measured 2026-10-21)
-- [ ] Grafana reachable through the ingress VIP; tester can hit hello-world on 443 and nothing else (hello-world part ✅)
+- [x] Grafana reachable through the ingress VIP; tester can hit hello-world on 443 and nothing else
 - [x] Clean checkpoint taken of every VM (nodes: `cluster-base`; hub, tester: `clean-base`)
 
 **Done when:** a commit to `main` reaches the cluster in under 5 minutes with no manual step.
@@ -382,7 +382,7 @@ Build one layer, prove it with one experiment, then add the next. Never install 
 
 1. **Network** — Hyper-V switches, hub VM (routing, NAT, DNS, firewall), tester VM, 3 lab VMs resized to 7 GB; checkpoint.
 2. **Cluster** — k3s HA, Cilium (CNI + LB IPs + Gateway API); tester reaches the VIP through the hub. ✅ Done 2026-10-21
-3. **Delivery** — GitHub repo, Argo CD, hello-world via push; observability stack → **Module 0 done**, then Module 1. (Repo, Argo CD, cert-manager ✅ 2026-10-21; push-to-deploy and observability next)
+3. **Delivery** — GitHub repo, Argo CD, hello-world via push; observability stack → **Module 0 done**, then Module 1. ✅ Done 2026-10-21 (Module 0 complete)
 4. **RabbitMQ + Postgres** — order, inventory, payment saga → Module 2.
 5. **Kafka** — Strimzi, generator, stream processor, dashboard → Module 3.
 6. **Cassandra + Kafka Connect** (Debezium, sink) → Module 4.

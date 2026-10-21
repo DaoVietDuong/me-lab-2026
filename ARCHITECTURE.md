@@ -11,7 +11,9 @@
 | 2. Cluster: k3s HA + Cilium (CNI, LB IPs, Gateway API) | ✅ Done — tester reaches `https://10.10.0.200` through the hub, nothing else |
 | 3a. GitHub repo, Argo CD (app of apps), cert-manager + lab CA, `*.apps.lab` DNS | ✅ Done — all 5 Argo CD apps Synced/Healthy |
 | 3b. Push-to-deploy (Actions → GHCR → Argo CD) | ✅ Done — `git push` → new version serving in **186 s** (target < 5 min) |
-| 3c. Observability: Prometheus, Grafana, Loki, Tempo → **Module 0 done** | ⏭ **Next** |
+| 3c. Observability: Prometheus, Grafana, Loki, Tempo, Alloy | ✅ Done — metrics, logs, hub firewall drops and traces verified end to end |
+| **Module 0 — Foundation** | ✅ **Complete** (2026-10-21) |
+| Module 1 — Networking experiments | ⏭ **Next** |
 | 4–9. RabbitMQ + Postgres, Kafka, Cassandra, Redis, Modules 6–8 | Not started |
 
 ## Topology
@@ -160,6 +162,38 @@ git push (services/hello/**)
 
 **Deployed now:** `hello` (namespace `demo`, https://hello.apps.lab). It runs as UID 1000, non-root, with a read-only root filesystem, all capabilities dropped and the RuntimeDefault seccomp profile.
 
+## Observability
+
+All in namespace `observability`, all Argo CD apps.
+
+```
+pods ─ stdout ─▶ /var/log/pods ─▶ Alloy (DaemonSet, node-local) ─┐
+hub rsyslog ─ fw-drop, TCP 1514 ─▶ 10.10.0.201 (LB) ─▶ Alloy ────┼─▶ Loki ──┐
+services ─ OTLP 4317/4318 ─▶ alloy.observability.svc ─▶ Tempo ───┼─────────┼─▶ Grafana  https://grafana.apps.lab
+targets ◀─ scrape 30 s ─ Prometheus ─▶ Alertmanager ─────────────┘         │   (Loki ⇄ Tempo linked by trace_id)
+k6 ─ remote write ─▶ Prometheus (receiver enabled, Module 7) ──────────────┘
+```
+
+| Component | Chart | Mode / retention | Memory now |
+| --- | --- | --- | --- |
+| Prometheus | kube-prometheus-stack **92.11.0** | 1 replica, 3 d or 2 GB, 3 Gi PVC, scrape 30 s | ~660 Mi |
+| Grafana | (bundled) | Admin from secret `grafana-admin` (**not in Git**) | ~500 Mi (3 containers) |
+| Alertmanager, operator, kube-state-metrics, node-exporter | (bundled) | | small |
+| Loki | grafana/loki **7.3.0** | Single binary, filesystem, 72 h, 3 Gi PVC, no caches | ~150 Mi |
+| Tempo | grafana-community/tempo **3.2.0** | Single binary, local, 24 h, 2 Gi PVC | small |
+| Alloy | grafana/alloy **1.14.0** | DaemonSet: pod logs (own node only), hub syslog, OTLP → Tempo | ~60–80 Mi each |
+
+**Scraped:** apiserver, kubelet, CoreDNS, etcd (via ScrapeConfig `etcd` → `10.10.0.1x:2381`), node-exporter, kube-state-metrics and the stack itself. All targets up, no alerts firing. Not scraped: kube-controller-manager and kube-scheduler (inside the k3s process, bound to 127.0.0.1) and kube-proxy (none; Cilium).
+
+**Verified 2026-10-21:** every target `up`. Pod logs from every namespace reach Loki. A tester → node1:22 drop on the hub showed up in Loki (`{job="hub-syslog"}`) ~15 s later. A test OTLP trace sent to Alloy could be fetched from Tempo after 5 s.
+
+**Use it:**
+- Logs: Grafana → Explore → Loki → `{namespace="demo"}`, or the hub firewall: `{job="hub-syslog"} |= "fw-drop"`
+- Send traces from a service: `OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy.observability.svc:4318`
+- Grafana password: `kubectl --kubeconfig ~/.kube/lab.yaml -n observability get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d`
+
+**Resource use after the stack:** nodes use 2.6–3.0 GB of 4.9 GB, with **1.9–2.3 GB available** each. Windows has ~3.6 GB free with all VMs running.
+
 ## Access
 
 ```bash
@@ -174,6 +208,7 @@ curl -k https://10.10.0.200/                         # the gateway, from Windows
 | --- | --- |
 | https://argocd.apps.lab | Argo CD UI. User `admin`; password: `kubectl --kubeconfig ~/.kube/lab.yaml -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
 | https://hubble.apps.lab | Hubble UI: live flow map |
+| https://grafana.apps.lab | Grafana: metrics, logs, traces. User `admin`, password command in [Observability](#observability) |
 | https://hello.apps.lab | The push-to-deploy service; shows the version (commit SHA) and the pod that answered |
 | https://whoami.apps.lab (or any other name) | Smoke test (catch-all route) |
 
@@ -196,6 +231,7 @@ Scripts in [bootstrap/](bootstrap/) (run order in [bootstrap/README.md](bootstra
 | `30-hub-firewall.sh` | Installs the default-deny firewall; auto-rollback in 60 s if SSH is lost |
 | `40-k3s.sh` | k3s on node1 → Gateway API CRDs → Cilium → join node2/3 → LB pool → gateway + whoami → Windows kubeconfig |
 | `50-argocd.sh` | Argo CD from `platform/argocd`, then the root app; waits until every app is Synced/Healthy |
+| `60-observability.sh` | Out-of-Git parts: Grafana admin secret (random, never printed) and hub rsyslog → Alloy |
 
 ## Deviations from the plan
 
@@ -206,6 +242,8 @@ Scripts in [bootstrap/](bootstrap/) (run order in [bootstrap/README.md](bootstra
 | "HTTPS to github.com, ghcr.io and registries" | Implemented as a DNS-driven allowlist; apt also allowed on HTTP 80 | nftables can't match domain names; Ubuntu mirrors use HTTP |
 | MetalLB | **Cilium LB IPAM + L2 announcements** | Same ARP mechanism without extra pods; Cilium already runs on every node |
 | ingress-nginx | **Cilium Gateway API** | ingress-nginx was archived in March 2026 (no security fixes); Gateway API is the current standard |
+| OpenTelemetry Collector → Tempo | **Alloy** receives OTLP and forwards to Tempo | Alloy is an OTel Collector distribution and already runs on every node for logs: one fewer component |
+| Grafana's Tempo chart | **grafana-community/tempo** | The grafana/helm-charts copy is deprecated |
 
 ## Known limits and watch-outs
 
@@ -218,4 +256,4 @@ Scripts in [bootstrap/](bootstrap/) (run order in [bootstrap/README.md](bootstra
 
 ## Next step
 
-Build step 3c (completes Module 0): **observability**. kube-prometheus-stack (Prometheus, Alertmanager, Grafana), Loki + Alloy for logs (the hub's firewall drops too), Tempo for traces; Grafana at `https://grafana.apps.lab`. All of it will run as Argo CD apps, sized for 5 GB nodes.
+**Module 1 — Networking**, the first breaking experiments (see [docs/PLAN.md](docs/PLAN.md)): trace one request end to end (tester → hub → VIP → pod) with `tcpdump` and Hubble; asymmetric routing; firewall debugging from the drop logs (now in Loki); WAN latency/loss with `tc netem` on the hub; Chaos Mesh for in-cluster latency and partitions; DNS failure; MTU mismatch; hub as SPOF; Cilium default-deny. Each experiment gets a card in `experiments/` and a Grafana dashboard. Chaos Mesh is the first thing to install for it.
