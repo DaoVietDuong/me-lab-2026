@@ -45,7 +45,8 @@ case "${1:-status}" in
         reload
         if [ "${2:-}" = "--guard" ]; then
             systemctl stop "$ROLLBACK_UNIT.timer" 2>/dev/null || true
-            systemd-run --quiet --unit "$ROLLBACK_UNIT" --on-active=60 \
+            # AccuracySec: by default a systemd timer may fire up to 1 min late (seen in M1-03)
+            systemd-run --quiet --unit "$ROLLBACK_UNIT" --on-active=60 --timer-property=AccuracySec=1s \
                 /bin/sh -c "nft -f $BACKUP && systemctl restart dnsmasq && logger -t lab-fw 'rolled back'"
             echo "applied - run 'lab-fw confirm' from a NEW SSH session within 60 s or it rolls back"
         else

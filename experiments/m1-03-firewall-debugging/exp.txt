@@ -1,0 +1,13 @@
+08:57:08 tester->lab chain flushed; auto-restore in 60s
+== out-tester.txt: 87 ok, 33 failed
+08:57:08 tester  000
+08:58:09 tester  000
+== out-windows.txt: 120 ok, 0 failed
+== Dropped forwarded flows in the last 4 min (Loki: {job="hub-syslog"} |= "fw-drop fwd")
+dpt:443,dst:10.10.0.200,in:eth3,out:eth2,src:10.20.0.10  -> 33 packets
+== Per minute, tester -> VIP:443
+  08:55:00  27
+  08:58:00  28
+  08:59:00  5
+== Hub: which rule is (now) there, and how often it matched
+		tcp dport 443 ip daddr 10.10.0.200 counter packets 67 bytes 4020 accept comment "mode normal: ingress only"

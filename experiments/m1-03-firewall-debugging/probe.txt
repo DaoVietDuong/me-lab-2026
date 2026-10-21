@@ -1,0 +1,4 @@
+== out-tester.txt: 87 ok, 33 failed
+08:57:08 tester  000
+08:58:09 tester  000
+== out-windows.txt: 120 ok, 0 failed

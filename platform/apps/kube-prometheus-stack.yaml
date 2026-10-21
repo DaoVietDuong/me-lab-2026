@@ -83,6 +83,10 @@ spec:
             analytics:
               reporting_enabled: false
               check_for_updates: false
+            # Grafana pre-installs apps from grafana.com, with the files on storage.googleapis.com.
+            # The egress allowlist blocks both (on purpose); without this it retries every 10 s forever (M1-03).
+            plugins:
+              preinstall_disabled: true
           defaultDashboardsTimezone: utc
           # 384Mi was too small: Grafana sat at the limit, the kernel reclaimed in a loop
           # (memory.events max 1.3M, no OOM kill), CPU went to 1.8 cores, probes timed out
