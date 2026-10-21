@@ -1,0 +1,33 @@
+# PostgreSQL for Module 4: 1 primary + 2 replicas, one per node, on node-local disks.
+# local-path storage is deliberate: when a node dies its volume is gone with it, so only
+# PostgreSQL's own replication keeps the data. Starts with asynchronous replication (the default);
+# the sync-vs-async experiment switches spec.postgresql.synchronous.
+# Services: pg-lab-rw (primary), pg-lab-ro (replicas), pg-lab-r (any). App user "lab", db "lab";
+# password in the generated secret pg-lab-app (never in Git).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-lab
+spec:
+  instances: 3
+  storage:
+    storageClass: local-path
+    size: 1Gi
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 384Mi}
+  postgresql:
+    parameters:
+      shared_buffers: 64MB
+      max_connections: "50"
+      log_min_duration_statement: "1000"
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required     # never two instances on one node
+  bootstrap:
+    initdb:
+      database: lab
+      owner: lab
+  monitoring:
+    enablePodMonitor: true
