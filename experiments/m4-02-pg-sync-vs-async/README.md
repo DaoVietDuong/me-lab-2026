@@ -56,7 +56,7 @@ Hyper-V `Stop-VM` wasn't available in this session (no admin rights), so `../m4-
 
 With `dataDurability: required`, the new primary may not confirm *any* commit until a synchronous standby is attached. The surviving replica couldn't attach because **it couldn't resolve `pg-lab-rw`**: k3s runs CoreDNS as **one replica** with no anti-affinity or PodDisruptionBudget, and it was on the crashed node. Async had a 69 s outage in the same situation because its new primary doesn't need a standby to commit. Sync turned a DNS outage into a write outage.
 
-**Open fix (not applied yet):** run CoreDNS with ≥2 replicas on different nodes. k3s re-applies its packaged `coredns.yaml` on every server start, so a `kubectl scale` doesn't stick. Options: disable the packaged CoreDNS (`disable: [coredns]`) and run the CoreDNS Helm chart via Argo CD (same Service IP 10.43.0.10), or stop k3s re-applying it (`coredns.yaml.skip` on every server) and manage the Deployment in Git.
+**Decision (2026-10-22): accepted risk, CoreDNS stays at one replica.** If revisited: run CoreDNS with ≥2 replicas on different nodes. k3s re-applies its packaged `coredns.yaml` on every server start, so a `kubectl scale` doesn't stick. Options: disable the packaged CoreDNS (`disable: [coredns]`) and run the CoreDNS Helm chart via Argo CD (same Service IP 10.43.0.10), or stop k3s re-applying it (`coredns.yaml.skip` on every server) and manage the Deployment in Git.
 
 ## Options in between
 
