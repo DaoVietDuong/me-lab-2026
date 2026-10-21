@@ -1,0 +1,20 @@
+# LoadBalancer addresses on the lab spoke. Cilium answers ARP for them from one node
+# (chosen through a Kubernetes lease), the way MetalLB L2 mode would.
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: spoke-lab
+spec:
+  blocks:
+    - start: 10.10.0.200
+      stop: 10.10.0.220
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: spoke-lab
+spec:
+  interfaces:
+    - ^eth0$
+  loadBalancerIPs: true
+  externalIPs: true

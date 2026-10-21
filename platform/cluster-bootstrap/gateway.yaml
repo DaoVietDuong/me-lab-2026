@@ -1,0 +1,29 @@
+# The lab's single public entry point: HTTPS on 10.10.0.200, the only address
+# the tester may reach in normal firewall mode.
+# TLS uses a self-signed cert (secret lab-gateway-tls) until cert-manager is installed.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: lab-gateway
+  namespace: gateway
+spec:
+  gatewayClassName: cilium
+  infrastructure:
+    annotations:
+      lbipam.cilium.io/ips: 10.10.0.200
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: lab-gateway-tls
+      allowedRoutes:
+        namespaces:
+          from: All

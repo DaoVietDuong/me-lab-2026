@@ -1,0 +1,2 @@
+# Black-box mode: the tester is a real external client and reaches only the ingress VIP on 443
+tcp dport 443 ip daddr $INGRESS_VIP counter accept comment "mode normal: ingress only"

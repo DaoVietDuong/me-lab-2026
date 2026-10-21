@@ -1,0 +1,42 @@
+# Cilium: pod networking, kube-proxy replacement, NetworkPolicy, Hubble,
+# LoadBalancer IPs (L2 announcements, replaces MetalLB) and Gateway API (replaces ingress-nginx).
+# Installed by k3s's built-in helm-controller. bootstrap: true runs the install job on the host
+# network, because there is no pod network until Cilium itself is up.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  bootstrap: true
+  repo: https://helm.cilium.io/
+  chart: cilium
+  version: 1.20.3
+  targetNamespace: kube-system
+  valuesContent: |-
+    # Every node is a k3s server, so the API server is always on localhost - no external VIP needed
+    k8sServiceHost: 127.0.0.1
+    k8sServicePort: 6443
+    kubeProxyReplacement: true
+    ipam:
+      mode: kubernetes          # k3s hands out pod CIDRs from 10.42.0.0/16
+    bpf:
+      masquerade: true
+    operator:
+      replicas: 1               # RAM is tight; the operator is not on the data path
+    l7Proxy: true
+    gatewayAPI:
+      enabled: true
+    l2announcements:
+      enabled: true
+    externalIPs:
+      enabled: true
+    # L2 announcements renew one lease per service; raise the client rate limit as Cilium recommends
+    k8sClientRateLimit:
+      qps: 20
+      burst: 40
+    hubble:
+      relay:
+        enabled: true
+      ui:
+        enabled: true

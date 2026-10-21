@@ -1,0 +1,11 @@
+# Files that run on Linux must keep LF, even when checked out on Windows
+* text=auto
+*.sh             text eol=lf
+*.nft            text eol=lf
+*.yaml           text eol=lf
+*.yml            text eol=lf
+*.conf           text eol=lf
+bootstrap/hub/lab-fw        text eol=lf
+bootstrap/golden/user-data  text eol=lf
+bootstrap/golden/meta-data  text eol=lf
+*.ps1            text eol=crlf

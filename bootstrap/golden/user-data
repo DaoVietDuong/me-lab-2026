@@ -1,0 +1,47 @@
+#cloud-config
+# Ubuntu 24.04 autoinstall for the golden image.
+# The image is generalized in late-commands and powered off; it is never booted itself.
+# Users, hostname, network and SSH keys come from each clone's own NoCloud seed (see 20-vms.ps1).
+autoinstall:
+  version: 1
+  source:
+    id: ubuntu-server-minimal
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  timezone: Etc/UTC
+  storage:
+    layout:
+      name: direct
+    swap:
+      size: 0
+  ssh:
+    install-server: true
+    allow-pw: false
+  packages:
+    - chrony
+    - curl
+    - ca-certificates
+    - linux-cloud-tools-virtual   # hv_kvp_daemon: Hyper-V sees guest IPs
+    - linux-tools-virtual
+    - tcpdump
+    - dnsutils
+    - iputils-ping
+    - less
+    - vim-tiny
+  # Satisfies the installer in place of an identity section; removed again in late-commands.
+  user-data:
+    disable_root: true
+  late-commands:
+    # Let each clone's NoCloud seed configure it on first boot
+    - rm -f /target/etc/cloud/cloud.cfg.d/90-installer-network.cfg
+    - rm -f /target/etc/cloud/cloud.cfg.d/99-installer.cfg
+    - rm -f /target/etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg
+    - rm -f /target/etc/cloud/cloud-init.disabled
+    - rm -f /target/etc/netplan/*.yaml
+    # No shared identity between clones
+    - rm -f /target/etc/ssh/ssh_host_*
+    - truncate -s 0 /target/etc/machine-id
+    - rm -f /target/var/lib/dbus/machine-id
+    - curtin in-target -- cloud-init clean --logs
+  shutdown: poweroff

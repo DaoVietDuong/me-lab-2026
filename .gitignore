@@ -1,0 +1,9 @@
+# Host-specific audit output (machine name, paths, MACs)
+bootstrap/audit/
+
+# Never commit cluster credentials or keys
+*.kubeconfig
+kubeconfig*
+*.key
+*.pem
+!**/public*.pem

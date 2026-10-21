@@ -1,0 +1,75 @@
+#!/bin/bash
+# Hub firewall control.
+#   lab-fw apply [--guard]   check + load /etc/nftables.conf; --guard rolls back in 60 s unless confirmed
+#   lab-fw confirm           keep the rules loaded by "apply --guard"
+#   lab-fw normal|pentest    switch tester->lab mode and reload
+#   lab-fw status            mode, counters, last drops
+set -euo pipefail
+
+CONF=/etc/nftables.conf
+MODE_LINK=/etc/lab/fw-mode.nft
+BACKUP=/run/lab-fw.backup
+ROLLBACK_UNIT=lab-fw-rollback
+
+SETS="egress_https4 egress_http4"
+
+set_ips() { nft list set inet lab_fw "$1" 2>/dev/null | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | sort -u | paste -sd, - || true; }
+
+reload() {
+    nft -c -f "$CONF"
+    { echo 'flush ruleset'; nft list ruleset; } > "$BACKUP"
+    # "flush ruleset" empties the egress sets; keep their IPs so clients with cached DNS answers keep working
+    declare -A saved
+    for s in $SETS; do saved[$s]=$(set_ips "$s"); done
+    nft -f "$CONF"
+    for s in $SETS; do [ -n "${saved[$s]}" ] && nft add element inet lab_fw "$s" "{ ${saved[$s]} }"; done
+    # dnsmasq only adds IPs to the sets on fresh upstream answers, so empty its cache too
+    systemctl restart dnsmasq
+}
+
+# Mode switch replaces only the tester_to_lab chain, atomically, so sets and counters elsewhere stay intact
+switch_mode() {
+    local vip
+    vip=$(grep -oP 'define INGRESS_VIP\s*=\s*\K\S+' "$CONF")
+    {
+        echo "define INGRESS_VIP = $vip"
+        echo "flush chain inet lab_fw tester_to_lab"
+        echo "table inet lab_fw { chain tester_to_lab {"
+        cat "/etc/lab/fw-mode-$1.nft"
+        printf '}\n}\n'
+    } | nft -f -
+}
+
+case "${1:-status}" in
+    apply)
+        reload
+        if [ "${2:-}" = "--guard" ]; then
+            systemctl stop "$ROLLBACK_UNIT.timer" 2>/dev/null || true
+            systemd-run --quiet --unit "$ROLLBACK_UNIT" --on-active=60 \
+                /bin/sh -c "nft -f $BACKUP && systemctl restart dnsmasq && logger -t lab-fw 'rolled back'"
+            echo "applied - run 'lab-fw confirm' from a NEW SSH session within 60 s or it rolls back"
+        else
+            echo "applied"
+        fi
+        ;;
+    confirm)
+        systemctl stop "$ROLLBACK_UNIT.timer" 2>/dev/null && echo "confirmed" || echo "nothing to confirm"
+        ;;
+    normal|pentest)
+        switch_mode "$1"
+        ln -sfn "/etc/lab/fw-mode-$1.nft" "$MODE_LINK"   # the mode also survives a reboot or full apply
+        echo "tester->lab mode: $1"
+        ;;
+    status)
+        echo "tester->lab mode: $(basename "$(readlink "$MODE_LINK")" .nft | sed 's/fw-mode-//')"
+        nft list chain inet lab_fw tester_to_lab | grep -E 'accept'
+        echo "--- egress set sizes"
+        for s in $SETS; do
+            ips=$(set_ips "$s"); echo "$s: $( [ -n "$ips" ] && tr , '\n' <<<"$ips" | wc -l || echo 0) IPs"
+        done
+        echo "--- last drops"
+        journalctl -k -g 'fw-drop' -n 10 --no-pager -o short-iso | sed 's/ IN=/\n    IN=/' | grep -v '^--' || true
+        ;;
+    *)
+        echo "usage: lab-fw apply [--guard] | confirm | normal | pentest | status" >&2; exit 2 ;;
+esac
