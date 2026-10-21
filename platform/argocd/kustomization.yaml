@@ -38,6 +38,9 @@ patches:
         name: argocd-cmd-params-cm
       data:
         server.insecure: "true"
+        # Diff via a server-side dry run, so fields the API server defaults (e.g. HTTPRoute
+        # path match "/", backendRef weight) don't show as drift
+        controller.diff.server.side: "true"
   - patch: |-
       apiVersion: v1
       kind: ConfigMap
