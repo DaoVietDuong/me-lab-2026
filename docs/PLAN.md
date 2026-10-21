@@ -382,7 +382,7 @@ Build one layer, prove it with one experiment, then add the next. Never install 
 
 1. **Network** — Hyper-V switches, hub VM (routing, NAT, DNS, firewall), tester VM, 3 lab VMs resized to 7 GB; checkpoint.
 2. **Cluster** — k3s HA, Cilium (CNI + LB IPs + Gateway API); tester reaches the VIP through the hub. ✅ Done 2026-10-21
-3. **Delivery** — GitHub repo, Argo CD, hello-world via push; observability stack → **Module 0 done**, then Module 1.
+3. **Delivery** — GitHub repo, Argo CD, hello-world via push; observability stack → **Module 0 done**, then Module 1. (Repo, Argo CD, cert-manager ✅ 2026-10-21; push-to-deploy and observability next)
 4. **RabbitMQ + Postgres** — order, inventory, payment saga → Module 2.
 5. **Kafka** — Strimzi, generator, stream processor, dashboard → Module 3.
 6. **Cassandra + Kafka Connect** (Debezium, sink) → Module 4.
