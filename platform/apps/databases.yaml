@@ -21,6 +21,8 @@ spec:
       name: pg-lab
       jsonPointers:
         - /spec/postgresql/synchronous
+        # M4-03: delayed apply on the replicas (receive WAL at once, apply it later)
+        - /spec/postgresql/parameters/recovery_min_apply_delay
   syncPolicy:
     automated:
       prune: true
