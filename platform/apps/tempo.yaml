@@ -12,19 +12,12 @@ spec:
     chart: tempo
     targetRevision: 3.2.0
     helm:
-      # A string, not valuesObject: "jaeger: null" (removes the chart's default Jaeger receivers)
-      # would be dropped from a stored object and leave the root app permanently OutOfSync
-      values: |
+      valuesObject:
         tempo:
           retention: 24h
           reportingEnabled: false
-          # OTLP only; traces arrive from Alloy
-          receivers:
-            jaeger: null
-            otlp:
-              protocols:
-                grpc: {endpoint: "0.0.0.0:4317"}
-                http: {endpoint: "0.0.0.0:4318"}
+          # Receivers stay at the chart default (OTLP + Jaeger): its Service template requires the
+          # Jaeger keys. Lab services send OTLP to Alloy, which forwards to Tempo :4317.
           resources:
             requests: {cpu: 20m, memory: 128Mi}
             limits: {memory: 512Mi}
