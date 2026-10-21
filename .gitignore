@@ -1,6 +1,15 @@
 # Host-specific audit output (machine name, paths, MACs)
 bootstrap/audit/
 
+# Personal credential notes - keep them OUTSIDE this repo (e.g. E:\Workspaces\me-lab-2026\acc-cre.md);
+# these patterns are only a safety net
+acc-cre*.md
+*credential*
+*creds*
+secrets/
+.env
+.env.*
+
 # Never commit cluster credentials or keys
 *.kubeconfig
 kubeconfig*
