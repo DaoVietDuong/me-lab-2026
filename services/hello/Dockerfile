@@ -9,6 +9,7 @@ ARG VERSION=dev
 ENV VERSION=$VERSION PORT=8080 NODE_ENV=production
 WORKDIR /app
 COPY server.js ./
-USER node
+# Numeric UID (= "node"), so Kubernetes runAsNonRoot can verify it isn't root
+USER 1000:1000
 EXPOSE 8080
 CMD ["node", "server.js"]
