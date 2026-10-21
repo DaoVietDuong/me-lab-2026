@@ -18,6 +18,11 @@ spec:
       containers:
         - name: hello
           image: ghcr.io/daovietduong/hello   # tag comes from kustomization.yaml
+          env:
+            # Fully qualified with a trailing dot: one DNS query instead of walking the ndots:5 search list.
+            # Under 100 ms delay + 5% loss, the short name took 0.5-3 s to resolve (M1-05).
+            - name: DOWNSTREAM
+              value: http://hello.demo.svc.cluster.local.
           ports:
             - {name: http, containerPort: 8080}
           readinessProbe:
