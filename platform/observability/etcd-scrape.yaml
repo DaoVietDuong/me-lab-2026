@@ -1,0 +1,14 @@
+# etcd on each k3s server (etcd-expose-metrics: true -> plain HTTP on :2381).
+# The job is "scrapeConfig/observability/etcd", which matches the chart's etcd alert rules (job=~".*etcd.*").
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: etcd
+spec:
+  staticConfigs:
+    - targets:
+        - 10.10.0.11:2381
+        - 10.10.0.12:2381
+        - 10.10.0.13:2381
+  metricsPath: /metrics
+  scrapeInterval: 30s

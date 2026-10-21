@@ -19,10 +19,13 @@ spec:
         kubeControllerManager: {enabled: false}
         kubeScheduler: {enabled: false}
         kubeProxy: {enabled: false}
+        # etcd: keep the chart's etcd alert rules, but scrape through a ScrapeConfig
+        # (platform/observability/etcd-scrape.yaml). The chart's way is a hand-made Endpoints object,
+        # and Argo CD excludes Endpoints from sync by default.
         kubeEtcd:
           enabled: true
-          endpoints: [10.10.0.11, 10.10.0.12, 10.10.0.13]   # k3s etcd-expose-metrics, plain HTTP
-          service: {enabled: true, port: 2381, targetPort: 2381}
+          service: {enabled: false}
+          serviceMonitor: {enabled: false}
 
         prometheusOperator:
           admissionWebhooks:
@@ -41,6 +44,7 @@ spec:
             podMonitorSelectorNilUsesHelmValues: false
             ruleSelectorNilUsesHelmValues: false
             probeSelectorNilUsesHelmValues: false
+            scrapeConfigSelectorNilUsesHelmValues: false
             enableRemoteWriteReceiver: true    # k6 pushes load-test results here (Module 7)
             resources:
               requests: {cpu: 100m, memory: 400Mi}

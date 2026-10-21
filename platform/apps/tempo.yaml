@@ -12,7 +12,9 @@ spec:
     chart: tempo
     targetRevision: 3.2.0
     helm:
-      valuesObject:
+      # A string, not valuesObject: "jaeger: null" (removes the chart's default Jaeger receivers)
+      # would be dropped from a stored object and leave the root app permanently OutOfSync
+      values: |
         tempo:
           retention: 24h
           reportingEnabled: false
