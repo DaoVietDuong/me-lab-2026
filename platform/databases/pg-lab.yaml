@@ -10,6 +10,9 @@ metadata:
   name: pg-lab
 spec:
   instances: 3
+  # A deleted primary first waits for clients to disconnect ("smart" shutdown), then shuts down fast.
+  # The default 180 s kept one long-lived client writing to a primary being replaced for 3 minutes (M4-01).
+  smartShutdownTimeout: 15
   storage:
     storageClass: local-path
     size: 1Gi
