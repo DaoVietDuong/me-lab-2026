@@ -1,0 +1,18 @@
+# M1-05: every packet leaving a hello pod is delayed 100 ms and 5% are dropped.
+# A call between two hello pods therefore pays the delay twice (request out of one, reply out of the other).
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: m1-05-slow-net
+  namespace: demo
+spec:
+  action: netem
+  mode: all
+  selector:
+    namespaces: [demo]
+    labelSelectors: {app: hello}
+  delay:
+    latency: 100ms
+  loss:
+    loss: "5"
+  duration: 15m   # safety net: removes itself

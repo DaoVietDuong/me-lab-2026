@@ -42,6 +42,7 @@ Short, reusable.
 | [m1-02-asymmetric-routing](m1-02-asymmetric-routing/) | 1 Networking | Replies bypass the hub: conntrack `SYN_SENT [UNREPLIED]`, connection hangs after the handshake; invalid drops now logged |
 | [m1-03-firewall-debugging](m1-03-firewall-debugging/) | 1 Networking | A bad rule found from Loki alone (33 drops = 33 failures); found 1-min-late systemd timers and Grafana phoning home |
 | [m1-04-wan-latency-loss](m1-04-wan-latency-loss/) | 1 Networking | netem RTT +50 ms / 1–5% loss: fresh request = 4 RTT (DNS!), loss moves p99 in 1 s steps; DNS TTL 0 fixed, IPv6 negative caching open |
+| [m1-05-cluster-latency-retries](m1-05-cluster-latency-retries/) | 1 Networking | 100 ms + 5% loss on a depth-3 chain: naive retries → 2.5× leaf load, 8/30 ok; deadline budget → 0.9×, 35/40 ok; ndots DNS cost 0.5–3 s |
 
 ## Tools
 
