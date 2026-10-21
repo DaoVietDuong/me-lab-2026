@@ -13,7 +13,7 @@
 | 3b. Push-to-deploy (Actions → GHCR → Argo CD) | ✅ Done — `git push` → new version serving in **186 s** (target < 5 min) |
 | 3c. Observability: Prometheus, Grafana, Loki, Tempo, Alloy | ✅ Done — metrics, logs, hub firewall drops and traces verified end to end |
 | **Module 0 — Foundation** | ✅ **Complete** (2026-10-21) |
-| Module 1 — Networking experiments | ⏭ **Next** |
+| Module 1 — Networking experiments | 🔄 **In progress**: Chaos Mesh 2.8.5 installed and verified (100 ms injected → median 30 → 132 ms); [M1-01 trace a request](experiments/m1-01-trace-request/) done |
 | 4–9. RabbitMQ + Postgres, Kafka, Cassandra, Redis, Modules 6–8 | Not started |
 
 ## Topology
@@ -209,6 +209,7 @@ curl -k https://10.10.0.200/                         # the gateway, from Windows
 | https://argocd.apps.lab | Argo CD UI. User `admin`; password: `kubectl --kubeconfig ~/.kube/lab.yaml -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
 | https://hubble.apps.lab | Hubble UI: live flow map |
 | https://grafana.apps.lab | Grafana: metrics, logs, traces. User `admin`, password command in [Observability](#observability) |
+| https://chaos.apps.lab | Chaos Mesh dashboard. Token: `kubectl --kubeconfig ~/.kube/lab.yaml -n chaos-mesh create token chaos-controller-manager --duration 8h` |
 | https://hello.apps.lab | The push-to-deploy service; shows the version (commit SHA) and the pod that answered |
 | https://whoami.apps.lab (or any other name) | Smoke test (catch-all route) |
 
