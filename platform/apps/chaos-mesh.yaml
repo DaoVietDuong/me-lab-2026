@@ -1,0 +1,48 @@
+# Chaos Mesh: pod kill, network latency/loss/partition, clock skew, I/O faults - all as YAML in experiments/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chaos-mesh
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.chaos-mesh.org
+    chart: chaos-mesh
+    targetRevision: 2.8.5
+    helm:
+      valuesObject:
+        chaosDaemon:
+          runtime: containerd
+          socketPath: /run/k3s/containerd/containerd.sock   # k3s's own containerd, not /run/containerd
+          resources:
+            requests: {cpu: 10m, memory: 48Mi}
+            limits: {memory: 192Mi}
+        controllerManager:
+          replicaCount: 1        # chart default is 3; leader election isn't worth the RAM here
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {memory: 256Mi}
+        dashboard:
+          create: true
+          securityMode: true     # needs a ServiceAccount token to log in (see experiments/README.md)
+          resources:
+            requests: {cpu: 10m, memory: 48Mi}
+            limits: {memory: 192Mi}
+        # Webhook certs from cert-manager: the chart's default generates new ones on every render,
+        # which Argo CD would see as permanent drift
+        webhook:
+          certManager:
+            enabled: true
+        dnsServer:
+          create: false          # turned on later for the DNS-failure experiment
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chaos-mesh
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

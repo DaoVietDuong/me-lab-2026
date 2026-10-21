@@ -1,0 +1,25 @@
+# Chaos Mesh dashboard at https://chaos.apps.lab (API-server defaults written out; see platform/argocd/httproute.yaml)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: chaos-dashboard
+  namespace: chaos-mesh
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: lab-gateway
+      namespace: gateway
+  hostnames:
+    - chaos.apps.lab
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: chaos-dashboard
+          port: 2333
+          weight: 1
