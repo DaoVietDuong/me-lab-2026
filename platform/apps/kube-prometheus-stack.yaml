@@ -84,9 +84,12 @@ spec:
               reporting_enabled: false
               check_for_updates: false
           defaultDashboardsTimezone: utc
+          # 384Mi was too small: Grafana sat at the limit, the kernel reclaimed in a loop
+          # (memory.events max 1.3M, no OOM kill), CPU went to 1.8 cores, probes timed out
+          # and the gateway answered "no healthy upstream"
           resources:
-            requests: {cpu: 20m, memory: 128Mi}
-            limits: {memory: 384Mi}
+            requests: {cpu: 50m, memory: 256Mi}
+            limits: {memory: 768Mi}
           additionalDataSources:
             - name: Loki
               uid: loki
