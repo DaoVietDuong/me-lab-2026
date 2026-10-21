@@ -1,8 +1,9 @@
 # Host-specific audit output (machine name, paths, MACs)
 bootstrap/audit/
 
-# Personal credential notes - keep them OUTSIDE this repo (e.g. E:\Workspaces\me-lab-2026\acc-cre.md);
-# these patterns are only a safety net
+# Personal secrets live in E:\Workspaces\me-lab-2026\my-sec\, OUTSIDE this repo.
+# These patterns are only a safety net in case it (or similar files) ever end up inside.
+my-sec/
 acc-cre*.md
 *credential*
 *creds*
