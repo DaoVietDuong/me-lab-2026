@@ -6,6 +6,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - httproute.yaml
+  - servicemonitor.yaml
 images:
   - name: ghcr.io/daovietduong/hello
     newTag: "3da954aea674"

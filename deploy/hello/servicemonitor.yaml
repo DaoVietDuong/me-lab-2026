@@ -1,0 +1,12 @@
+# Prometheus scrapes hello's /metrics every 15 s (hello_requests_total, hello_downstream_attempts_total)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hello
+spec:
+  selector:
+    matchLabels: {app: hello}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
