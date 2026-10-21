@@ -50,5 +50,5 @@ Short, reusable.
 | `tc netem` | hub | WAN latency and loss between spokes |
 | Hub firewall | hub | `sudo lab-fw status / normal / pentest`; drops in Grafana: `{job="hub-syslog"} \|= "fw-drop"` |
 
-**Chaos Mesh dashboard login** (security mode): create a token for a ServiceAccount with the chaos-mesh manager role, e.g.
-`kubectl -n chaos-mesh create token chaos-controller-manager --duration 8h`.
+**Chaos Mesh dashboard login** (security mode): Name = any label; Token from the least-privilege account `chaos-dashboard-admin` (manages experiments, reads pods/namespaces):
+`kubectl --kubeconfig ~/.kube/lab.yaml -n chaos-mesh create token chaos-dashboard-admin --duration 8h | clip` (copies it; paste into the dashboard).

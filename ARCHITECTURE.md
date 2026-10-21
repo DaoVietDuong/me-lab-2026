@@ -209,7 +209,7 @@ curl -k https://10.10.0.200/                         # the gateway, from Windows
 | https://argocd.apps.lab | Argo CD UI. User `admin`; password: `kubectl --kubeconfig ~/.kube/lab.yaml -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
 | https://hubble.apps.lab | Hubble UI: live flow map |
 | https://grafana.apps.lab | Grafana: metrics, logs, traces. User `admin`, password command in [Observability](#observability) |
-| https://chaos.apps.lab | Chaos Mesh dashboard. Token: `kubectl --kubeconfig ~/.kube/lab.yaml -n chaos-mesh create token chaos-controller-manager --duration 8h` |
+| https://chaos.apps.lab | Chaos Mesh dashboard. Token: `kubectl --kubeconfig ~/.kube/lab.yaml -n chaos-mesh create token chaos-dashboard-admin --duration 8h | clip` (Name: any label) |
 | https://hello.apps.lab | The push-to-deploy service; shows the version (commit SHA) and the pod that answered |
 | https://whoami.apps.lab (or any other name) | Smoke test (catch-all route) |
 

@@ -1,0 +1,33 @@
+# Login account for the Chaos Mesh dashboard (security mode). It can manage chaos experiments
+# cluster-wide and read pods/namespaces to pick targets, and nothing else.
+# Token: kubectl -n chaos-mesh create token chaos-dashboard-admin --duration 8h
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chaos-dashboard-admin
+  namespace: chaos-mesh
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: chaos-dashboard-admin
+rules:
+  - apiGroups: [""]
+    resources: [pods, namespaces]
+    verbs: [get, list, watch]
+  - apiGroups: [chaos-mesh.org]
+    resources: ["*"]
+    verbs: [get, list, watch, create, delete, patch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-dashboard-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-dashboard-admin
+subjects:
+  - kind: ServiceAccount
+    name: chaos-dashboard-admin
+    namespace: chaos-mesh
