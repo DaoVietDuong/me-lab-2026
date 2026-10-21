@@ -11,7 +11,6 @@ One-time scripts that build the lab's 5 VMs on Hyper-V. VM settings live in `lab
 | 2 | `10-host.ps1` | **admin** | Folders on E:, switches, host IP 10.0.0.1, routes to spokes |
 | 3 | `15-golden.ps1` | normal | Downloads + verifies Ubuntu 24.04, installs the read-only golden disk (type `yes` once on the console) |
 | 4 | `20-vms.ps1 -Start` | normal | 5 VMs from the golden disk, each with its own cloud-init seed; hub boots first |
-
 | 5 | `bash 30-hub-firewall.sh` | Git Bash | Default-deny hub firewall + egress allowlist (`hub/`); rolls back by itself in 60 s if it locks out SSH |
 | 6 | `bash 40-k3s.sh` | Git Bash | 3-server k3s + Cilium + LB pool + `lab-gateway` on 10.10.0.200 + whoami smoke test; kubeconfig → `~/.kube/lab.yaml` |
 | 7 | `bash 50-argocd.sh` | Git Bash | Argo CD + root app; from here on everything under `platform/` is deployed by pushing to GitHub |
