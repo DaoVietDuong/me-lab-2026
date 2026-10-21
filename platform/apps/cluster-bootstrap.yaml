@@ -1,0 +1,22 @@
+# LB pool, gateway, Hubble UI route and the whoami smoke test (platform/cluster-bootstrap).
+# cilium.yaml is excluded: Cilium stays with k3s's helm-controller, because the CNI must come up
+# before Argo CD can run at all.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-bootstrap
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/DaoVietDuong/me-lab-2026.git
+    targetRevision: main
+    path: platform/cluster-bootstrap
+    directory:
+      exclude: cilium.yaml
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

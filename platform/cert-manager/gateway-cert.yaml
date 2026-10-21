@@ -1,0 +1,22 @@
+# The gateway's certificate. Replaces the temporary self-signed secret created by bootstrap/40-k3s.sh
+# (cert-manager re-issues into the same secret).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lab-gateway
+  namespace: gateway
+spec:
+  secretName: lab-gateway-tls
+  dnsNames:
+    - apps.lab
+    - "*.apps.lab"
+  ipAddresses:
+    - 10.10.0.200
+  duration: 2160h         # 90 days
+  renewBefore: 360h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: lab-ca
+    kind: ClusterIssuer

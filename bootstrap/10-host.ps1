@@ -34,6 +34,14 @@ else {
     "created : $($Lab.HostMgmtIp)/24 on $ifAlias"
 }
 
+# Windows asks the hub's dnsmasq for *.lab names (VMs and *.apps.lab services); everything else is unchanged
+$nrpt = Get-DnsClientNrptRule | Where-Object { $_.Namespace -contains ".$($Lab.Domain)" }
+if ($nrpt) { "exists  : DNS rule .$($Lab.Domain) -> $($nrpt.NameServers -join ',')" }
+else {
+    Add-DnsClientNrptRule -Namespace ".$($Lab.Domain)" -NameServers $Lab.HubMgmtIp | Out-Null
+    "created : DNS rule .$($Lab.Domain) -> $($Lab.HubMgmtIp)"
+}
+
 # Spokes are reachable only through the hub
 $ifIndex = (Get-NetAdapter -Name $ifAlias).ifIndex
 foreach ($prefix in $Lab.SpokePrefixes) {

@@ -1,0 +1,21 @@
+# Argo CD manages its own install (platform/argocd)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/DaoVietDuong/me-lab-2026.git
+    targetRevision: main
+    path: platform/argocd
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: false          # never let a bad commit delete Argo CD itself
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true   # Argo CD's CRDs are too big for client-side apply

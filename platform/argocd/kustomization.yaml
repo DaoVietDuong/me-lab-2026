@@ -1,0 +1,47 @@
+# Argo CD, installed once by bootstrap/50-argocd.sh and then managed by itself (apps/argocd.yaml).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+
+resources:
+  - namespace.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.6/manifests/install.yaml
+  - httproute.yaml
+
+# Upstream pulls Redis from public.ecr.aws, which the hub's egress allowlist doesn't include;
+# the same image is on Docker Hub
+images:
+  - name: public.ecr.aws/docker/library/redis
+    newName: docker.io/library/redis
+
+patches:
+  # No SSO and no notifications in the lab: save the RAM
+  - target: {kind: Deployment, name: argocd-dex-server}
+    patch: |-
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-dex-server
+  - target: {kind: Deployment, name: argocd-notifications-controller}
+    patch: |-
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-notifications-controller
+  # TLS ends at lab-gateway, so argocd-server serves plain HTTP inside the cluster
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cmd-params-cm
+      data:
+        server.insecure: "true"
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cm
+      data:
+        url: https://argocd.apps.lab
