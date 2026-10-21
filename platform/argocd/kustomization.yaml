@@ -48,3 +48,6 @@ patches:
         name: argocd-cm
       data:
         url: https://argocd.apps.lab
+        # Poll Git every 60 s (default 120 s + jitter): there's no inbound path for a webhook,
+        # and the "push to running in < 5 min" target needs the slack
+        timeout.reconciliation: 60s

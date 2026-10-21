@@ -1,0 +1,21 @@
+name: hello
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - services/hello/**
+      - .github/workflows/hello.yml
+      - .github/workflows/_build.yml
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/_build.yml
+    with:
+      service: hello

@@ -1,0 +1,86 @@
+# Shared build for every service: test -> build -> Trivy scan -> push to GHCR -> bump the tag in deploy/.
+# Argo CD sees the bump commit and rolls the Deployment. Called by one small workflow per service.
+# Third-party actions and the Trivy image are pinned by commit SHA / digest, never by a movable tag.
+name: build
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: Folder name under services/ and deploy/
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write    # commit the tag bump to deploy/
+      packages: write    # push to ghcr.io
+    # Tag bumps from different services must not race each other's git push
+    concurrency:
+      group: deploy-bump
+      cancel-in-progress: false
+    env:
+      SERVICE: ${{ inputs.service }}
+      IMAGE: ghcr.io/daovietduong/${{ inputs.service }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Tag
+        run: echo "TAG=${GITHUB_SHA::12}" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Unit tests (Dockerfile "test" stage)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: services/${{ inputs.service }}
+          target: test
+          cache-from: type=gha,scope=${{ inputs.service }}
+          cache-to: type=gha,scope=${{ inputs.service }},mode=max
+
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: services/${{ inputs.service }}
+          load: true
+          tags: ${{ env.IMAGE }}:${{ env.TAG }}
+          build-args: VERSION=${{ env.TAG }}
+          # Links the package to this repo on GitHub
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=${{ inputs.service }}
+
+      - name: Trivy scan (fail on fixable CRITICAL)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            ghcr.io/aquasecurity/trivy@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222 \
+            image --exit-code 1 --severity CRITICAL --ignore-unfixed --no-progress "$IMAGE:$TAG"
+
+      - name: Push
+        run: docker push "$IMAGE:$TAG"
+
+      - name: Bump tag in deploy/
+        run: |
+          file="deploy/$SERVICE/kustomization.yaml"
+          sed -i -E "s#(newTag:).*#\1 \"$TAG\"#" "$file"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$file"
+          git commit -m "deploy($SERVICE): $TAG [skip ci]"
+          # Another bump may have landed since checkout
+          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done
+          exit 1
+
+      - name: Summary
+        run: echo "Deployed \`$IMAGE:$TAG\` - Argo CD will roll it out within ~1 min" >> "$GITHUB_STEP_SUMMARY"
