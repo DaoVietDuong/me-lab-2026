@@ -10,7 +10,8 @@
 | 1. Network: switches, hub, tester, 3 lab VMs, hub firewall | ✅ Done — tested, `clean-base` checkpoints taken |
 | 2. Cluster: k3s HA + Cilium (CNI, LB IPs, Gateway API) | ✅ Done — tester reaches `https://10.10.0.200` through the hub, nothing else |
 | 3a. GitHub repo, Argo CD (app of apps), cert-manager + lab CA, `*.apps.lab` DNS | ✅ Done — all 5 Argo CD apps Synced/Healthy |
-| 3b. Push-to-deploy (Actions → GHCR → Argo CD), observability → Module 0 | ⏭ **Next** |
+| 3b. Push-to-deploy (Actions → GHCR → Argo CD) | ✅ Done — `git push` → new version serving in **186 s** (target < 5 min) |
+| 3c. Observability: Prometheus, Grafana, Loki, Tempo → **Module 0 done** | ⏭ **Next** |
 | 4–9. RabbitMQ + Postgres, Kafka, Cassandra, Redis, Modules 6–8 | Not started |
 
 ## Topology
@@ -135,7 +136,29 @@ platform/apps/root.yaml   (applied once by bootstrap/50-argocd.sh)
 
 **Not managed by Argo CD:** Cilium. It stays with k3s's helm-controller, because the CNI must be running before Argo CD can start. Its source is still in Git (`platform/cluster-bootstrap/cilium.yaml`), excluded from the `cluster-bootstrap` app.
 
-**Change the platform** by committing to `main`. Argo CD polls every 3 minutes, and self-heal reverts manual `kubectl` edits to managed objects.
+**Change the platform** by committing to `main`. Argo CD polls every **60 s** (`timeout.reconciliation`), and self-heal reverts manual `kubectl` edits to managed objects.
+
+## CI/CD: push to deploy
+
+```
+git push (services/hello/**)
+  └─ .github/workflows/hello.yml ── calls ── _build.yml (one shared template for every service)
+       test stage → build → Trivy (fixable CRITICAL fails) → push ghcr.io/daovietduong/hello:<sha12>
+       → commit "deploy(hello): <sha12> [skip ci]" to deploy/hello/kustomization.yaml
+  └─ Argo CD app "hello" sees the bump (≤ 60 s) → rolling update (maxUnavailable 0)
+```
+
+| Piece | As built |
+| --- | --- |
+| Images | `ghcr.io/daovietduong/<service>:<first 12 chars of the commit SHA>`. **Public**: they inherit the repo's visibility, so the nodes pull with no credentials |
+| Supply chain | Every action pinned to a full commit SHA; Trivy runs from its own image pinned by digest; the workflow token is read-only by default, and the build job gets only `contents: write` + `packages: write` |
+| Tests | Each service's Dockerfile has a `test` stage that CI builds first, the same for every language |
+| Concurrency | Tag bumps share one concurrency group and `pull --rebase` before pushing, so two services building at once can't lose a bump |
+| Measured | CI 62 s; push → new version serving 186 s |
+
+**Add a service:** create `services/<name>/` (Dockerfile with a `test` stage), `deploy/<name>/` (kustomization with `newTag`), `.github/workflows/<name>.yml` (copy `hello.yml`), and `platform/apps/<name>.yaml`.
+
+**Deployed now:** `hello` (namespace `demo`, https://hello.apps.lab). It runs as UID 1000, non-root, with a read-only root filesystem, all capabilities dropped and the RuntimeDefault seccomp profile.
 
 ## Access
 
@@ -151,6 +174,7 @@ curl -k https://10.10.0.200/                         # the gateway, from Windows
 | --- | --- |
 | https://argocd.apps.lab | Argo CD UI. User `admin`; password: `kubectl --kubeconfig ~/.kube/lab.yaml -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
 | https://hubble.apps.lab | Hubble UI: live flow map |
+| https://hello.apps.lab | The push-to-deploy service; shows the version (commit SHA) and the pod that answered |
 | https://whoami.apps.lab (or any other name) | Smoke test (catch-all route) |
 
 **Name resolution:** the hub's dnsmasq answers `*.apps.lab` → 10.10.0.200 and `<vm>.lab` → the VM's IP. Windows sends only `.lab` queries to the hub (NRPT rule from `10-host.ps1`); all other DNS is unchanged.
@@ -194,6 +218,4 @@ Scripts in [bootstrap/](bootstrap/) (run order in [bootstrap/README.md](bootstra
 
 ## Next step
 
-Build step 3b (completes Module 0):
-1. **Push-to-deploy:** a hello-world service in `services/`, a GitHub Actions workflow (path filter → build → Trivy → push `ghcr.io/daovietduong/<service>:<sha>` → bump the tag in `deploy/`), and an Argo CD app for `deploy/`. Done when `git push` reaches the cluster in under 5 minutes with no manual step.
-2. **Observability:** kube-prometheus-stack, Loki + Alloy, Tempo; Grafana at `https://grafana.apps.lab`.
+Build step 3c (completes Module 0): **observability**. kube-prometheus-stack (Prometheus, Alertmanager, Grafana), Loki + Alloy for logs (the hub's firewall drops too), Tempo for traces; Grafana at `https://grafana.apps.lab`. All of it will run as Argo CD apps, sized for 5 GB nodes.
