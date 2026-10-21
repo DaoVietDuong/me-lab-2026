@@ -4,6 +4,7 @@
 #   ./run.sh reset          new writer pod, empty table
 #   ./run.sh analyze        failover gap and lost/ambiguous writes from the writer log vs. the table
 #   ./run.sh restore        start any lab VM that is off, wait for the cluster to be whole again
+#   ./run.sh cleanup        remove the writer pod and drop the test table (experiment does this at the end)
 # Faults: delete   = kubectl delete pod (graceful: PostgreSQL gets a clean shutdown)
 #         kill     = Chaos Mesh pod-kill, grace 0 (SIGKILL, like the process crashing)
 #         poweroff = Hyper-V Stop-VM -TurnOff on the primary's node (pulling the power cord)
@@ -21,7 +22,8 @@ case "${1:-}" in
 reset)
     kc -n db delete pod pg-writer --ignore-not-found --wait >/dev/null
     kc -n db exec "$(primary)" -c postgres -- psql -qtAX -d lab -c "drop table if exists writes" >/dev/null
-    kc apply -f writer.yaml >/dev/null
+    # RATE_SLEEP=0 removes the writer's ~300 writes/s cap (used by M4-02 to measure throughput)
+    sed "s#value: \"0.002\"#value: \"${RATE_SLEEP:-0.002}\"#" writer.yaml | kc apply -f - >/dev/null
     kc -n db wait --for=condition=Ready pod/pg-writer --timeout=2m >/dev/null
     echo "writer on $(kc -n db get pod pg-writer -o jsonpath='{.spec.nodeName}'), primary $(primary) on $(node_of "$(primary)")"
     ;;
@@ -69,7 +71,14 @@ experiment)
     sleep 20
     kc -n db delete podchaos m4-kill-primary --ignore-not-found >/dev/null 2>&1 || true
     API=$(api_for "$node") bash "$SELF" analyze
+    # Don't leave the writer filling the 1 Gi volumes (it once ran for 1.5 h after an experiment)
+    API=$(api_for "$node") bash "$SELF" cleanup
+    ;;
+cleanup)
+    kc -n db delete pod pg-writer --ignore-not-found --wait=false >/dev/null
+    kc -n db exec "$(primary)" -c postgres -- psql -qtAX -d lab -c "drop table if exists writes" >/dev/null 2>&1 || true
+    echo "writer removed, test table dropped"
     ;;
 *)
-    echo "usage: $0 experiment <delete|kill|poweroff> | reset | analyze | restore" >&2; exit 2 ;;
+    echo "usage: $0 experiment <delete|kill|poweroff> | reset | analyze | restore | cleanup" >&2; exit 2 ;;
 esac

@@ -1,0 +1,24 @@
+# M4-02: replicas lag behind - every packet from the primary to the replicas (the WAL stream) is delayed 300 ms.
+# __PRIMARY__ is replaced by run.sh with the current primary pod. Client traffic to the primary is not delayed.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: m4-replica-lag
+  namespace: db
+spec:
+  action: delay
+  mode: all
+  selector:
+    pods:
+      db: [__PRIMARY__]
+  direction: to
+  target:
+    mode: all
+    selector:
+      namespaces: [db]
+      labelSelectors:
+        cnpg.io/cluster: pg-lab
+        cnpg.io/instanceRole: replica
+  delay:
+    latency: 300ms
+  duration: 15m   # safety net

@@ -13,6 +13,14 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: db
+  # M4-02 switches pg-lab between async and sync replication with kubectl, mid-experiment.
+  # Argo CD ignores only that field; everything else in pg-lab stays Git-controlled.
+  ignoreDifferences:
+    - group: postgresql.cnpg.io
+      kind: Cluster
+      name: pg-lab
+      jsonPointers:
+        - /spec/postgresql/synchronous
   syncPolicy:
     automated:
       prune: true
@@ -20,6 +28,7 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true   # don't overwrite the ignored field on sync either
     retry:
       limit: 10
       backoff: {duration: 15s, factor: 2, maxDuration: 5m}
