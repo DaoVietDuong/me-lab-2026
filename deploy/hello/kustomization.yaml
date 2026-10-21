@@ -8,4 +8,4 @@ resources:
   - httproute.yaml
 images:
   - name: ghcr.io/daovietduong/hello
-    newTag: "bootstrap"   # set by CI (.github/workflows/_build.yml) on every build
+    newTag: "1a496a3e91cd"
