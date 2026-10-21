@@ -1,0 +1,21 @@
+# Extra objects around the observability charts (platform/observability): Grafana route, hub syslog address
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-config
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/DaoVietDuong/me-lab-2026.git
+    targetRevision: main
+    path: platform/observability
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

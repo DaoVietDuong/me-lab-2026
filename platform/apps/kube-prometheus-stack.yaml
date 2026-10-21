@@ -1,0 +1,116 @@
+# Metrics + alerts + dashboards: Prometheus, Alertmanager, Grafana, node-exporter, kube-state-metrics.
+# Sized for 5 GB nodes. Grafana's admin password lives in the secret observability/grafana-admin,
+# created outside Git by bootstrap/60-observability.sh.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 92.11.0
+    helm:
+      valuesObject:
+        # k3s runs these inside the k3s process on 127.0.0.1, and Cilium replaces kube-proxy:
+        # scraping them would only produce "target down" alerts
+        kubeControllerManager: {enabled: false}
+        kubeScheduler: {enabled: false}
+        kubeProxy: {enabled: false}
+        kubeEtcd:
+          enabled: true
+          endpoints: [10.10.0.11, 10.10.0.12, 10.10.0.13]   # k3s etcd-expose-metrics, plain HTTP
+          service: {enabled: true, port: 2381, targetPort: 2381}
+
+        prometheusOperator:
+          admissionWebhooks:
+            certManager: {enabled: true}   # no hook Jobs for Argo CD to fight with
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {memory: 192Mi}
+
+        prometheus:
+          prometheusSpec:
+            retention: 3d
+            retentionSize: 2GB
+            scrapeInterval: 30s
+            # Pick up every ServiceMonitor/PodMonitor/rule in the cluster, not only this chart's
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            probeSelectorNilUsesHelmValues: false
+            enableRemoteWriteReceiver: true    # k6 pushes load-test results here (Module 7)
+            resources:
+              requests: {cpu: 100m, memory: 400Mi}
+              limits: {memory: 1200Mi}
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: local-path
+                  accessModes: [ReadWriteOnce]
+                  resources: {requests: {storage: 3Gi}}
+
+        alertmanager:
+          alertmanagerSpec:
+            resources:
+              requests: {cpu: 10m, memory: 32Mi}
+              limits: {memory: 96Mi}
+
+        kube-state-metrics:
+          resources:
+            requests: {cpu: 10m, memory: 48Mi}
+            limits: {memory: 128Mi}
+
+        prometheus-node-exporter:
+          resources:
+            requests: {cpu: 10m, memory: 24Mi}
+            limits: {memory: 64Mi}
+
+        grafana:
+          admin:
+            existingSecret: grafana-admin
+            userKey: admin-user
+            passwordKey: admin-password
+          grafana.ini:
+            server:
+              root_url: https://grafana.apps.lab
+            analytics:
+              reporting_enabled: false
+              check_for_updates: false
+          defaultDashboardsTimezone: utc
+          resources:
+            requests: {cpu: 20m, memory: 128Mi}
+            limits: {memory: 384Mi}
+          additionalDataSources:
+            - name: Loki
+              uid: loki
+              type: loki
+              url: http://loki.observability.svc:3100
+              jsonData:
+                derivedFields:
+                  - name: trace_id
+                    matcherRegex: '"?trace_?[iI]d"?[=:]"?(\w+)'
+                    datasourceUid: tempo
+                    url: "$${__value.raw}"
+            - name: Tempo
+              uid: tempo
+              type: tempo
+              url: http://tempo.observability.svc:3200
+              jsonData:
+                tracesToLogsV2:
+                  datasourceUid: loki
+                  filterByTraceID: true
+                serviceMap:
+                  datasourceUid: prometheus
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true     # the operator's CRDs are too big for client-side apply

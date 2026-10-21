@@ -1,0 +1,18 @@
+# Fixed address on the lab spoke for the hub's rsyslog (firewall drops) -> Alloy :1514 -> Loki.
+# Only TCP 1514 is exposed; the hub sends from its own address, which its firewall's output path allows.
+apiVersion: v1
+kind: Service
+metadata:
+  name: hub-syslog
+  annotations:
+    lbipam.cilium.io/ips: 10.10.0.201
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+  ports:
+    - name: syslog
+      port: 1514
+      targetPort: 1514
+      protocol: TCP
