@@ -1,0 +1,13 @@
+# SIGKILL the current primary pod (no graceful shutdown). __POD__ is replaced by run.sh.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: m4-kill-primary
+  namespace: db
+spec:
+  action: pod-kill
+  mode: one
+  gracePeriod: 0
+  selector:
+    pods:
+      db: [__POD__]

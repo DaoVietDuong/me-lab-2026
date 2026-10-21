@@ -13,6 +13,7 @@
 | 3b. Push-to-deploy (Actions → GHCR → Argo CD) | ✅ Done — `git push` → new version serving in **186 s** (target < 5 min) |
 | 3c. Observability: Prometheus, Grafana, Loki, Tempo, Alloy | ✅ Done — metrics, logs, hub firewall drops and traces verified end to end |
 | **Module 0 — Foundation** | ✅ **Complete** (2026-10-21) |
+| Module 4 — Distributed databases | 🔄 **In progress**: PostgreSQL (CloudNativePG 1.30.1, PG 18.6, 3 instances) running; [M4-01 primary failover](experiments/m4-01-pg-failover/) done. Cassandra next |
 | Module 1 — Networking experiments | 🔄 **In progress**: Chaos Mesh 2.8.5 installed and verified (100 ms injected → median 30 → 132 ms); [M1-01 trace a request](experiments/m1-01-trace-request/), [M1-02 asymmetric routing](experiments/m1-02-asymmetric-routing/), [M1-03 firewall debugging](experiments/m1-03-firewall-debugging/), [M1-04 WAN latency/loss](experiments/m1-04-wan-latency-loss/), [M1-05 cluster latency + retries](experiments/m1-05-cluster-latency-retries/) done |
 | 4–9. RabbitMQ + Postgres, Kafka, Cassandra, Redis, Modules 6–8 | Not started |
 
