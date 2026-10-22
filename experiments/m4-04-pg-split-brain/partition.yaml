@@ -1,0 +1,61 @@
+# M4-04: cut the primary off from everything that decides who is primary, but NOT from its clients.
+# __PRIMARY__ is replaced by run.sh with the current primary pod. Three rules, because one NetworkChaos
+# has only one target: the replicas (WAL stream, instance-to-instance isolation check), the operator
+# (status polling, failover decision) and the API server. The API server runs on the nodes
+# (k3s, 10.10.0.11-13:6443; Cilium's socket LB rewrites 10.43.0.1 to those before a packet leaves).
+# Blocking the node IPs is safe for kubelet probes: they come from cilium_host (10.42.x), not the node IP.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: m4-split-replicas
+  namespace: db
+spec:
+  action: partition
+  mode: all
+  selector:
+    pods:
+      db: [__PRIMARY__]
+  direction: both
+  target:
+    mode: all
+    selector:
+      namespaces: [db]
+      labelSelectors:
+        cnpg.io/cluster: pg-lab
+        cnpg.io/instanceRole: replica
+  duration: 15m   # safety net
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: m4-split-operator
+  namespace: db
+spec:
+  action: partition
+  mode: all
+  selector:
+    pods:
+      db: [__PRIMARY__]
+  direction: both
+  target:
+    mode: all
+    selector:
+      namespaces: [cnpg-system]
+      labelSelectors:
+        app.kubernetes.io/name: cloudnative-pg
+  duration: 15m
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: m4-split-apiserver
+  namespace: db
+spec:
+  action: partition
+  mode: all
+  selector:
+    pods:
+      db: [__PRIMARY__]
+  direction: to
+  externalTargets: [10.10.0.11, 10.10.0.12, 10.10.0.13, 10.43.0.1]
+  duration: 15m
