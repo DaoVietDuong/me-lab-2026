@@ -1,0 +1,47 @@
+# M2 probe pod: runs probe.js (publish or drain) on the hello service's Node image. probe.js and the
+# amqplib tarball come from ConfigMap m2-probe (run.sh creates it), so the pod needs no npm access:
+# the hub firewall doesn't allow the lab spoke to reach the npm registry.
+# __NAME__, __MODE__, __NODE__ (RabbitMQ pod to connect to), __LEADER__, __N__ are replaced by run.sh.
+# Credentials from the operator-generated secret, expanded by Kubernetes (never printed).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: __NAME__
+  namespace: mq
+  labels: {app: m2-probe}
+spec:
+  restartPolicy: Never
+  # Not on the leader's node, so a node-level fault doesn't take the observer with it
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels: {statefulset.kubernetes.io/pod-name: __LEADER__}
+          topologyKey: kubernetes.io/hostname
+  containers:
+    - name: probe
+      image: node:24.22.0-alpine
+      env:
+        - name: RMQ_USER
+          valueFrom: {secretKeyRef: {name: rmq-lab-default-user, key: username}}
+        - name: RMQ_PASS
+          valueFrom: {secretKeyRef: {name: rmq-lab-default-user, key: password}}
+        - {name: AMQP_URL, value: "amqp://$(RMQ_USER):$(RMQ_PASS)@__NODE__.rmq-lab-nodes.mq:5672"}
+        - {name: QUEUE, value: m2-01}
+        - {name: "N", value: "__N__"}   # quoted: YAML 1.1 reads a bare N as the boolean false
+        - {name: RATE, value: "500"}
+        - {name: WINDOW, value: "100"}
+      command: [sh, -c]
+      args:
+        - |
+          mkdir -p /app/node_modules/amqplib &&
+          tar xzf /cfg/amqplib.tgz -C /app/node_modules/amqplib --strip-components=1 &&
+          cp /cfg/probe.js /app/ && cd /app && exec node probe.js __MODE__
+      volumeMounts:
+        - {name: cfg, mountPath: /cfg}
+      resources:
+        requests: {cpu: 100m, memory: 64Mi}
+        limits: {memory: 256Mi}
+  volumes:
+    - name: cfg
+      configMap: {name: m2-probe}

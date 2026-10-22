@@ -47,6 +47,7 @@ Short, reusable.
 | [m4-02-pg-sync-vs-async](m4-02-pg-sync-vs-async/) | 4 Databases | Sync costs 44% (healthy) to 99.6% (300 ms lag) of write throughput; under lag a kernel crash lost 90 acked writes with async, 0 with sync; SIGKILL loses none; CoreDNS (1 replica) SPOF stretched a sync failover to 151 s |
 | [m4-03-read-your-writes](m4-03-read-your-writes/) | 4 Databases | Immediate replica reads are stale 96–98 % even idle (lag 1.2 ms); 100 % under 300 ms lag. Fixes: read primary / LSN wait (read waits) / remote_apply (write waits); ANY 1 not enough with one slow replica (62.5 % stale). A long replica read stalls replay to 28 s, then is cancelled |
 | [m4-04-pg-split-brain](m4-04-pg-split-brain/) | 4 Databases | Primary partitioned from replicas/operator/API, client still connected: never two primaries (old one fenced first), but async lost all 12,164 writes acked in the 41 s before the fence (isolation 6 s + liveness 20 s + smart shutdown 15 s); sync: 0 lost, 100 s outage |
+| [m2-01-quorum-leader-loss](m2-01-quorum-leader-loss/) | 2 RabbitMQ | Quorum-queue leader deleted / SIGKILLed / frozen under a 500 msg/s publisher with confirms: 0 of 130k confirmed lost, 0 duplicates; confirms paused < 0.1 s (loud) vs 6.5 s (SIGSTOP: Ra elects at 6.9 s, Erlang declares the node down only at 60 s); no liveness probe, TCP readiness passes a frozen broker |
 
 ## Tools
 
