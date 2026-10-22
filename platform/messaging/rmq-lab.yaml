@@ -1,0 +1,43 @@
+# RabbitMQ for Module 2: 3 nodes, one per node, on node-local disks. Commands between the saga services
+# go through quorum queues (Raft, replicated on all 3 nodes). Default user/password in the generated
+# secret rmq-lab-default-user (never in Git). Management UI and AMQP on Service rmq-lab.
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: rmq-lab
+spec:
+  replicas: 3
+  image: rabbitmq:4.3.7-management
+  # requests = limits: the operator sizes RabbitMQ's memory alarm from the container limit, and the
+  # slow-consumer experiment is meant to hit that alarm, not the kernel OOM killer
+  resources:
+    requests: {cpu: 100m, memory: 512Mi}
+    limits: {memory: 512Mi}
+  persistence:
+    storageClassName: local-path
+    storage: 2Gi
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:   # never two RabbitMQ nodes on one lab node
+        - labelSelector:
+            matchLabels: {app.kubernetes.io/name: rmq-lab}
+          topologyKey: kubernetes.io/hostname
+  rabbitmq:
+    additionalConfig: |
+      # A node that can see only a minority of the cluster pauses instead of serving (Module 2 partition test)
+      cluster_partition_handling = pause_minority
+      # Queues declared without x-queue-type on "/" are quorum queues, so no client can create a
+      # single-node classic queue by accident
+      default_queue_type = quorum
+---
+# Per-node RabbitMQ metrics (built-in Prometheus plugin, port 15692)
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: rmq-lab
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: rmq-lab}
+  podMetricsEndpoints:
+    - port: prometheus
+      interval: 15s

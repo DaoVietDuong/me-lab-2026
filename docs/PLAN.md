@@ -22,6 +22,8 @@ Every experiment follows the same card: **hypothesis → inject the fault → ob
 
 ### Databases: PostgreSQL + Cassandra (CockroachDB dropped)
 
+> **Decision 2026-10-23: Cassandra omitted.** The lab nodes have 1.3–2.7 GB free with the platform and Postgres running, and Module 4 moved on after the four Postgres experiments. The leaderless model is not covered. Where the design below used Cassandra, use Postgres (dashboard read model) or Kafka itself (stored stream output); the Kafka Connect Cassandra sink is dropped.
+
 There are three ways to replicate data, and each one fails differently. The lab should cover the two you can't get anywhere else.
 
 | Model | Who accepts a write | Example | Where you already get it in this lab |
@@ -278,6 +280,8 @@ Nine modules (0–8), in order: each one adds the component the next module brea
 | Hot partition | Partition key = `productId` with one best-seller | One node saturated; redesign the key (bucketing) |
 | Redis shard primary failover | Kill master | Compare with CNPG; risk of losing acknowledged writes |
 
+The four Cassandra rows are not run: Cassandra was omitted on 2026-10-23 (see Design decisions).
+
 ### Module 5 — Redis: distributed cache
 
 Run every experiment under k6 load from the tester, and watch three numbers: cache hit ratio, Postgres QPS, and p99 latency at the gateway.
@@ -385,7 +389,7 @@ Build one layer, prove it with one experiment, then add the next. Never install 
 3. **Delivery** — GitHub repo, Argo CD, hello-world via push; observability stack → **Module 0 done**, then Module 1. ✅ Done 2026-10-21 (Module 0 complete)
 4. **RabbitMQ + Postgres** — order, inventory, payment saga → Module 2.
 5. **Kafka** — Strimzi, generator, stream processor, dashboard → Module 3.
-6. **Cassandra + Kafka Connect** (Debezium, sink) → Module 4.
+6. ~~**Cassandra + Kafka Connect** (Debezium, sink) → Module 4.~~ Cassandra omitted (2026-10-23); Debezium moves to step 5 (Module 3 CDC).
 7. **Redis Cluster** — cache-aside in inventory, rate limiter in gateway, saga lock → Module 5.
 8. **Module 6** failure patterns across the whole system.
 9. **Module 7** performance, then **Module 8** security; re-run Module 7 to measure what security costs (TLS, policies).

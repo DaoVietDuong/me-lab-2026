@@ -1,0 +1,16 @@
+# RabbitMQ Cluster Operator (Module 2), from the upstream release manifest (no official Helm chart).
+# One replica is enough: RabbitMQ fails over by itself (Raft in quorum queues), the operator only
+# creates and reconfigures clusters. Unlike CNPG in M4-01, losing it doesn't block a failover.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://github.com/rabbitmq/cluster-operator/releases/download/v2.23.1/cluster-operator.yml
+patches:
+  # Upstream requests 500Mi / 200m: more than the whole RabbitMQ node it manages in this lab
+  - target: {kind: Deployment, name: rabbitmq-cluster-operator}
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: {cpu: 20m, memory: 64Mi}
+          limits: {memory: 256Mi}

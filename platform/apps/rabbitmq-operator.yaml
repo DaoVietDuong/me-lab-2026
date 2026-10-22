@@ -1,0 +1,24 @@
+# RabbitMQ Cluster Operator: runs RabbitMQ clusters (Module 2)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rabbitmq-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/DaoVietDuong/me-lab-2026.git
+    targetRevision: main
+    path: platform/rabbitmq-operator
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rabbitmq-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true   # the CRDs are too big for client-side apply
