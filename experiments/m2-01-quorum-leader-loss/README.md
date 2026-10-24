@@ -11,7 +11,7 @@ A quorum queue on 3 RabbitMQ nodes, with a publisher using confirms (max 100 unc
 
 ## Setup
 
-- RabbitMQ Cluster Operator 2.23.1, RabbitMQ 4.3.7 (Erlang/OTP 27), 3 nodes, one per lab node, 512 Mi each, `pause_minority`, quorum as the default queue type.
+- RabbitMQ Cluster Operator 2.23.1, RabbitMQ 4.3.7 (Erlang/OTP 27), 3 nodes, one per lab node, 512 Mi each, `pause_minority` (later found to be ignored, see M2-02), quorum as the default queue type.
 - Queue `m2-01` (quorum, 3 members) declared through server-0's HTTP API, so its leader starts on server-0 (quorum queue leaders are placed `client-local`).
 - `probe.js` (Node 24, amqplib 2.2.0) publishes `seq` 1..n through **server-1** (never the leader), and logs every `ack`/`nack` with its sequence number. A second run of it **drains** the queue and lists every message. **Lost = confirmed but not in the queue**, compared by sequence number.
 - amqplib is fetched on the host from the npm registry and checked against its published sha512, then shipped as a ConfigMap. The lab spoke can't reach npm (hub firewall default deny), and that's on purpose.
@@ -62,6 +62,6 @@ None needed for durability: quorum queues with publisher confirms did what they 
 ## Lessons
 
 - **Loud failures are easy, silent ones are slow.** Same as M4-01's power-off: test with a fault that leaves sockets open (SIGSTOP, partition, power loss), not only with pod deletes.
-- **RabbitMQ has two failure detectors:** Ra per quorum queue (~7 s here) and Erlang distribution for cluster membership (`net_ticktime` 60 s). Queues fail over on the first. `pause_minority`, the CLI and clustering decisions run on the second. M2-03 (partition) will be on that slower clock.
+- **RabbitMQ has two failure detectors:** Ra per quorum queue (~7 s here) and Erlang distribution for cluster membership (`net_ticktime` 60 s). Queues fail over on the first. The CLI and node up/down decisions run on the second (`pause_minority` would too, but Khepri ignores it: M2-02). M2-03 (partition) will be on that slower clock.
 - **Kubernetes won't notice a hung broker.** No liveness probe, and a TCP readiness check passes on a frozen process. Recovery came from RabbitMQ's own Raft, not the platform.
 - **Measure per message, not by counters.** Queue-depth stats lag, and load-tool rates can't show which messages were confirmed. Diffing sequence numbers is the only exact answer.

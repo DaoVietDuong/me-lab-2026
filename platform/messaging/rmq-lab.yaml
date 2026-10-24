@@ -24,8 +24,8 @@ spec:
           topologyKey: kubernetes.io/hostname
   rabbitmq:
     additionalConfig: |
-      # A node that can see only a minority of the cluster pauses instead of serving (Module 2 partition test)
-      cluster_partition_handling = pause_minority
+      # No cluster_partition_handling: with Khepri (on by default in 4.x) it is ignored, and a node in a
+      # minority simply can't commit (Raft). It keeps client connections open, though (M2-02)
       # Queues declared without x-queue-type on "/" are quorum queues, so no client can create a
       # single-node classic queue by accident
       default_queue_type = quorum

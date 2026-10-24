@@ -47,7 +47,7 @@ RabbitMQ carries **commands and work** between services: "reserve stock for orde
 
 - 3-node RabbitMQ cluster (RabbitMQ Cluster Operator) with **quorum queues**, replicated on all 3 nodes.
 - The order saga runs over RabbitMQ: command queues per service, reply/event exchanges back to the orchestrator.
-- Practice: publisher confirms, consumer prefetch, competing consumers, dead-letter exchanges, delayed retry, partition handling (`pause_minority`), and losing the quorum-queue leader.
+- Practice: publisher confirms, consumer prefetch, competing consumers, dead-letter exchanges, delayed retry, partition handling (Raft via Khepri; `pause_minority` no longer applies, see M2-02), and losing the quorum-queue leader.
 - The outbox pattern still applies: the order row and the "send command" row are saved in one Postgres transaction.
 
 ### Kafka: a real stream-processing job, not a queue
@@ -243,7 +243,7 @@ Nine modules (0–8), in order: each one adds the component the next module brea
 | --- | --- | --- |
 | Lose the quorum-queue leader | Delete the RabbitMQ pod holding the leader | Raft leader election; publisher confirms block, then resume |
 | Lose 2 of 3 nodes | Kill 2 pods | Quorum queue becomes unavailable instead of losing messages |
-| Partition one RabbitMQ node | NetworkChaos partition | `pause_minority` behaviour vs classic mirrored queues |
+| Partition one RabbitMQ node | NetworkChaos partition | Minority node under Raft (Khepri + quorum queues): clients on it stall; `pause_minority` and mirrored queues are gone in 4.x |
 | Fire-and-forget vs confirms | Kill broker mid-load with and without publisher confirms | Count lost commands |
 | Duplicate delivery | Kill consumer after processing, before ack | At-least-once → idempotent handlers in inventory and payment |
 | Poison command | Send a malformed `charge-payment` | Delivery limit + dead-letter exchange + delayed retry queue |
