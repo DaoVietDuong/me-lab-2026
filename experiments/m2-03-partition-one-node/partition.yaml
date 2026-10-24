@@ -1,0 +1,20 @@
+# M2-03: cut one RabbitMQ node off from the other two, but NOT from its clients (probe pods aren't a
+# target). __ISOLATED__ is replaced by run.sh; __PEERS__ by the other two pod names.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: m2-partition
+  namespace: mq
+spec:
+  action: partition
+  mode: all
+  selector:
+    pods:
+      mq: [__ISOLATED__]
+  direction: both
+  target:
+    mode: all
+    selector:
+      pods:
+        mq: [__PEERS__]
+  duration: 15m   # safety net; run.sh deletes it after PART_S

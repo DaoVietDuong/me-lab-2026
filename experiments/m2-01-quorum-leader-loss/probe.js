@@ -1,12 +1,14 @@
 // M2 probe: exact accounting of publisher confirms, which PerfTest can't give (it reports rates only).
 //   node probe.js publish   one line per confirm: "ack <seq> <time>" / "nack <seq> <time>"; "# ..." for events
 //   node probe.js drain     one line per message in the queue: "got <seq>"; stops after 3 s without messages
-// Body = the sequence number as text. Env: AMQP_URL, QUEUE, N, RATE (msg/s), WINDOW (max unconfirmed).
+// Body = the sequence number as text. Env: AMQP_URL, QUEUE, N, RATE (msg/s), WINDOW (max unconfirmed),
+// OFFSET (first seq - 1, so two publishers on one queue can be told apart; default 0).
 // No process.exit(): stdout is a pipe in a container and Node writes it asynchronously, so exiting
 // early would drop the last lines (the same trap as psql's buffering in M4-01).
 const amqp = require('amqplib');
 
 const { AMQP_URL, QUEUE = 'm2-01', N = '40000', RATE = '500', WINDOW = '100' } = process.env;
+const OFFSET = Number(process.env.OFFSET) || 0;
 const now = () => new Date().toISOString().slice(11, 23);
 
 async function publish() {
@@ -36,9 +38,10 @@ async function publish() {
     if (due > 0) await new Promise((r) => setTimeout(r, due));
     if (failed) break;
     inflight++; sent++;
-    ch.sendToQueue(QUEUE, Buffer.from(String(seq)), { persistent: true }, (err) => {
+    const id = OFFSET + seq;
+    ch.sendToQueue(QUEUE, Buffer.from(String(id)), { persistent: true }, (err) => {
       inflight--;
-      if (err) { nacked++; console.log(`nack ${seq} ${now()}`); } else { acked++; console.log(`ack ${seq} ${now()}`); }
+      if (err) { nacked++; console.log(`nack ${id} ${now()}`); } else { acked++; console.log(`ack ${id} ${now()}`); }
       wake();
     });
   }
