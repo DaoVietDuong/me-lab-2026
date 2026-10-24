@@ -57,7 +57,7 @@ Why hypothesis 2 failed: `rabbitmqctl list_feature_flags` shows **`khepri_db ena
 
 ## Fix
 
-- Removed `cluster_partition_handling = pause_minority` from [platform/messaging](../../platform/messaging/), and wrote down why (Khepri).
+- Removed our `cluster_partition_handling = pause_minority` line from [platform/messaging](../../platform/messaging/), and wrote down why (Khepri). After the restart it is still set: the operator writes the same value in `10-operatorDefaults.conf`. Our line was a duplicate of a default that does nothing.
 - For the services (saga, later): **put a timeout on publisher confirms** (e.g. 10 s, which is above M2-01's 7 s election). On a timeout, treat the command as "unknown", not as failed. Report the broker unhealthy, and resend later with the same message id, so a consumer can deduplicate. A publisher with no timeout would hang for as long as the quorum is lost, as this probe did.
 - Not changed: the operator's TCP readiness probe. A probe that checked for quorum would mark all three nodes unready at once, so Kubernetes would turn a degraded queue into a full outage of every queue.
 
