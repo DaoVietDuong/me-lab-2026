@@ -50,6 +50,7 @@ Short, reusable.
 | [m2-01-quorum-leader-loss](m2-01-quorum-leader-loss/) | 2 RabbitMQ | Quorum-queue leader deleted / SIGKILLed / frozen under a 500 msg/s publisher with confirms: 0 of 130k confirmed lost, 0 duplicates; confirms paused < 0.1 s (loud) vs 6.5 s (SIGSTOP: Ra elects at 6.9 s, Erlang declares the node down only at 60 s); no liveness probe, TCP readiness passes a frozen broker |
 | [m2-02-lose-two-nodes](m2-02-lose-two-nodes/) | 2 RabbitMQ | Leader + one follower killed / frozen: 0 of 80k confirmed lost; confirms just stop (40 s / 93 s) with no error, no closed connection, all pods Ready while frozen. `pause_minority` is ignored with Khepri (dead config; the operator sets it by default) |
 | [m2-03-partition-one-node](m2-03-partition-one-node/) | 2 RabbitMQ | Leader cut off from the other two (clients still connected): majority elects in 9.2 s, its publisher pauses 8.6 s; the client on the isolated old leader gets no confirm and no error for the whole 229 s partition; on heal the old leader steps down and drops its term-1 tail, 0 of 80k lost, 0 duplicates. CLI blind for 67 s |
+| [m2-04-confirms-vs-fire-and-forget](m2-04-confirms-vs-fire-and-forget/) | 2 RabbitMQ | Kill the publisher's broker (the leader): fire-and-forget silently loses the last 1 (500/s) / 15 (5k/s) sent; confirms lose 0 and nack the whole window on close, of which 80–90 % had in fact landed → resend = duplicates. Window 100 caps confirms at 3.7k/s |
 
 ## Tools
 
